@@ -101,6 +101,22 @@ async function readFullText(file: File): Promise<{ text: string; handle: string 
   return { text, handle };
 }
 
+// Number of calendar months the transactions span, inclusive.
+// e.g. 03 Mar → 31 May = 3 months.
+function monthSpan(txns: Txn[]): number {
+  const sorted = [...txns].sort((a, b) => a.ts - b.ts);
+  const first = new Date(sorted[0].ts);
+  const last = new Date(sorted[sorted.length - 1].ts);
+  return (
+    (last.getFullYear() - first.getFullYear()) * 12 +
+    (last.getMonth() - first.getMonth()) +
+    1
+  );
+}
+
+export const MIN_MONTHS = 1;
+export const MAX_MONTHS = 6;
+
 export async function parseStatement(file: File): Promise<WrappedData> {
   const { text, handle } = await readFullText(file);
   const txns = extractTransactions(text);
@@ -109,5 +125,13 @@ export async function parseStatement(file: File): Promise<WrappedData> {
       "Couldn't find any transactions. Make sure this is a Google Pay transaction statement PDF.",
     );
   }
+
+  const span = monthSpan(txns);
+  if (span < MIN_MONTHS || span > MAX_MONTHS) {
+    throw new Error(
+      `This statement spans ${span} months. Please upload a Google Pay statement covering ${MIN_MONTHS} to ${MAX_MONTHS} months.`,
+    );
+  }
+
   return analyze(txns, handle);
 }

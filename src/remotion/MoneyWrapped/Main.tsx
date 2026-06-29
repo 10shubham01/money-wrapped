@@ -1,7 +1,10 @@
-import { linearTiming, TransitionSeries } from "@remotion/transitions";
+import {
+  linearTiming,
+  type TransitionPresentation,
+  TransitionSeries,
+} from "@remotion/transitions";
 import { fade } from "@remotion/transitions/fade";
 import { slide } from "@remotion/transitions/slide";
-import { wipe } from "@remotion/transitions/wipe";
 import React from "react";
 import {
   AbsoluteFill,
@@ -33,31 +36,37 @@ type Data = z.infer<typeof CompositionProps>;
 const TR = 12; // transition length (frames)
 
 // scene durations (frames). Sum = 1920; minus 10×12 transitions = 1800 = 60s.
+// Ordered as a short story: the scale → the rhythm → the people → the verdict.
 const SCENES: { dur: number; Comp: React.FC<{ data: Data }> }[] = [
+  // — the scale —
   { dur: 150, Comp: SceneIntro },
   { dur: 190, Comp: SceneTotalSpent },
   { dur: 178, Comp: SceneTransactions },
-  { dur: 210, Comp: SceneReceipt },
-  { dur: 222, Comp: SceneLeaderboard },
-  { dur: 182, Comp: SceneBiggestSplurge },
+  // — the rhythm (when, across time) —
   { dur: 178, Comp: ScenePowerHour },
   { dur: 186, Comp: SceneMonthly },
+  // — the people (regulars → reach → the bill → the peak) —
+  { dur: 222, Comp: SceneLeaderboard },
   { dur: 168, Comp: SceneCircle },
+  { dur: 210, Comp: SceneReceipt },
+  { dur: 182, Comp: SceneBiggestSplurge },
+  // — the verdict —
   { dur: 172, Comp: ScenePersonality },
   { dur: 84, Comp: SceneOutro },
 ];
 
-const transitions = [
-  slide({ direction: "from-bottom" }),
-  wipe({ direction: "from-right" }),
-  fade(),
-  slide({ direction: "from-right" }),
-  fade(),
-  wipe({ direction: "from-bottom" }),
-  slide({ direction: "from-right" }),
-  fade(),
-  wipe({ direction: "from-right" }),
-  slide({ direction: "from-bottom" }),
+// Forward-moving slides carry the story along; fades mark the act breaks.
+const transitions: TransitionPresentation<any>[] = [
+  slide({ direction: "from-bottom" }), // intro → total spent
+  slide({ direction: "from-right" }), // total spent → transactions
+  fade(), // transactions → power hour (the rhythm begins)
+  slide({ direction: "from-right" }), // power hour → monthly
+  fade(), // monthly → leaderboard (the people begin)
+  slide({ direction: "from-right" }), // leaderboard → circle
+  slide({ direction: "from-right" }), // circle → receipt
+  slide({ direction: "from-right" }), // receipt → biggest splurge
+  fade(), // biggest splurge → personality (the verdict)
+  slide({ direction: "from-bottom" }), // personality → outro
 ];
 
 export const Main: React.FC<Data> = (data) => {

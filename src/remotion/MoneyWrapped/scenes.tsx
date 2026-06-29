@@ -2,11 +2,9 @@ import {
   HeartFilledIcon,
   IdCardIcon,
   LightningBoltIcon,
-  LockClosedIcon,
   MixIcon,
   MoonIcon,
   TokensIcon,
-  UploadIcon,
 } from "@radix-ui/react-icons";
 import React from "react";
 import { interpolate, useCurrentFrame } from "remotion";
@@ -131,7 +129,6 @@ export const SceneIntro: React.FC<{ data: Data }> = ({ data }) => {
 // 2 — TOTAL SPENT
 // ---------------------------------------------------------------------------
 export const SceneTotalSpent: React.FC<{ data: Data }> = ({ data }) => {
-  const frame = useCurrentFrame();
   const pop = useSpr(14, 10);
   const months = data.monthly.length || 3;
   return (
@@ -332,8 +329,7 @@ const initials = (name: string) =>
     .join("")
     .toUpperCase();
 
-const RANK_COLORS = ["#FFC93C", "#C7CEDA", "#E0925A", "#9AB7FF", "#FFB68F"];
-const AVATARS = ["#FFC93C", "#FF9DD2", "#8FE3CF", "#9AB7FF", "#FFB68F"];
+const MEDALS = ["🥇", "🥈", "🥉"];
 
 const LeaderRow: React.FC<{
   rank: number;
@@ -341,57 +337,68 @@ const LeaderRow: React.FC<{
   count: number;
   total: number;
 }> = ({ rank, name, count, total }) => {
-  const s = useSpr(10 + rank * 8, 17);
+  const s = useSpr(10 + rank * 7, 18);
   const top = rank === 0;
+  // #1 is a solid "paper" hero card; the rest are dark glass so white text
+  // stays crisp over the bright background.
   return (
     <div
       style={{
         display: "flex",
         alignItems: "center",
         gap: 26,
-        padding: top ? "26px 30px" : "20px 30px",
-        borderRadius: 28,
-        background: top ? "rgba(255,201,60,0.16)" : "rgba(255,255,255,0.07)",
-        border: top ? `3px solid ${C.yellow}` : "3px solid rgba(255,255,255,0.12)",
+        padding: top ? "30px 36px" : "20px 34px",
+        borderRadius: 30,
+        background: top ? C.paper : "rgba(12,13,22,0.30)",
+        color: top ? C.ink : C.paper,
+        boxShadow: top ? "0 22px 54px rgba(0,0,0,0.32)" : "none",
         opacity: interpolate(s, [0, 0.5], [0, 1], { extrapolateRight: "clamp" }),
-        translate: `${interpolate(s, [0, 1], [-50, 0])}px 0px`,
-        boxShadow: top ? "0 16px 44px rgba(0,0,0,0.25)" : "none",
+        translate: `${interpolate(s, [0, 1], [-48, 0])}px 0px`,
       }}
     >
-      <div
-        style={{
-          width: 50,
-          fontFamily: display,
-          fontSize: top ? 60 : 46,
-          textAlign: "center",
-          color: RANK_COLORS[rank] ?? "rgba(255,255,255,0.6)",
-        }}
-      >
-        {rank + 1}
+      {/* rank — medal for the podium, numeral after */}
+      <div style={{ width: 72, textAlign: "center", flexShrink: 0 }}>
+        {rank < 3 ? (
+          <span style={{ fontSize: top ? 66 : 50, lineHeight: 1 }}>
+            {MEDALS[rank]}
+          </span>
+        ) : (
+          <span
+            style={{
+              fontFamily: display,
+              fontSize: 48,
+              color: "rgba(255,255,255,0.7)",
+            }}
+          >
+            {rank + 1}
+          </span>
+        )}
       </div>
+      {/* avatar */}
       <div
         style={{
-          width: top ? 92 : 80,
-          height: top ? 92 : 80,
+          width: top ? 104 : 82,
+          height: top ? 104 : 82,
           borderRadius: "50%",
-          background: AVATARS[rank % AVATARS.length],
-          color: C.ink,
+          background: top ? C.pink : "rgba(255,255,255,0.16)",
+          color: C.paper,
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
           fontFamily: display,
-          fontSize: top ? 40 : 34,
+          fontSize: top ? 44 : 34,
           flexShrink: 0,
         }}
       >
         {initials(name)}
       </div>
+      {/* name + total */}
       <div style={{ flex: 1, minWidth: 0 }}>
         <div
           style={{
             fontFamily: sans,
-            fontWeight: 700,
-            fontSize: top ? 50 : 44,
+            fontWeight: 800,
+            fontSize: top ? 56 : 46,
             whiteSpace: "nowrap",
             overflow: "hidden",
             textOverflow: "ellipsis",
@@ -399,15 +406,31 @@ const LeaderRow: React.FC<{
         >
           {name}
         </div>
-        <div style={{ fontFamily: sans, fontSize: 30, opacity: 0.65 }}>
-          {formatCompactINR(total)} total
+        <div
+          style={{
+            fontFamily: sans,
+            fontSize: 30,
+            opacity: top ? 0.55 : 0.78,
+          }}
+        >
+          {formatCompactINR(total)} in total
         </div>
       </div>
-      <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end" }}>
-        <div style={{ fontFamily: display, fontSize: top ? 66 : 54, lineHeight: 1, color: top ? C.yellow : C.paper }}>
+      {/* count */}
+      <div style={{ textAlign: "right", flexShrink: 0 }}>
+        <div
+          style={{
+            fontFamily: display,
+            fontSize: top ? 72 : 56,
+            lineHeight: 1,
+            color: top ? C.pink : C.yellow,
+          }}
+        >
           {count}×
         </div>
-        <div style={{ fontFamily: sans, fontSize: 26, opacity: 0.6 }}>times</div>
+        <div style={{ fontFamily: sans, fontSize: 26, opacity: 0.7 }}>
+          payments
+        </div>
       </div>
     </div>
   );
@@ -416,11 +439,25 @@ const LeaderRow: React.FC<{
 export const SceneLeaderboard: React.FC<{ data: Data }> = ({ data }) => {
   const rows = data.topPayeesByCount.slice(0, 5);
   return (
-    <Scene bg={C.violet} a="#A78CFF" b="#3D2199" align="flex-start">
-      <Eyebrow color={C.yellow}>Who you paid most often</Eyebrow>
-      <div style={{ width: "100%", display: "flex", flexDirection: "column", gap: 22, marginTop: 60 }}>
+    <Scene bg={C.pink} a="#FF8AC4" b="#C81E6E" align="flex-start">
+      <Eyebrow color={C.ink}>Who you paid most often</Eyebrow>
+      <div
+        style={{
+          width: "100%",
+          display: "flex",
+          flexDirection: "column",
+          gap: 20,
+          marginTop: 56,
+        }}
+      >
         {rows.map((r, i) => (
-          <LeaderRow key={r.name} rank={i} name={r.name} count={r.count} total={r.total} />
+          <LeaderRow
+            key={r.name}
+            rank={i}
+            name={r.name}
+            count={r.count}
+            total={r.total}
+          />
         ))}
       </div>
     </Scene>
