@@ -4,6 +4,7 @@ import {
   ArrowRightIcon,
   Cross1Icon,
   EnterFullScreenIcon,
+  ExitFullScreenIcon,
   FileTextIcon,
   LockClosedIcon,
   PauseIcon,
@@ -316,7 +317,11 @@ const Dot: React.FC = () => (
 // ===========================================================================
 const VideoPlayer: React.FC<{ data: WrappedData }> = ({ data }) => {
   const ref = useRef<PlayerRef>(null);
+  const boxRef = useRef<HTMLDivElement>(null);
   const [playing, setPlaying] = useState(false);
+  // CSS pseudo-fullscreen fallback for browsers without the Fullscreen API
+  // (notably iOS Safari, which only supports it on native <video> elements)
+  const [cssFullscreen, setCssFullscreen] = useState(false);
   const [muted, setMuted] = useState(false);
   // index of the section currently being scrubbed through (for highlighting)
   const [activeIdx, setActiveIdx] = useState<number | null>(null);
@@ -402,14 +407,55 @@ const VideoPlayer: React.FC<{ data: WrappedData }> = ({ data }) => {
 
   const goFullscreen = useCallback((e: React.MouseEvent) => {
     e.stopPropagation();
-    ref.current?.requestFullscreen();
+    // Prefer the native Fullscreen API (desktop, Android Chrome).
+    const nativeSupported =
+      typeof document !== "undefined" &&
+      (document.fullscreenEnabled ||
+        // Safari desktop exposes the webkit-prefixed flag
+        (document as unknown as { webkitFullscreenEnabled?: boolean })
+          .webkitFullscreenEnabled);
+    if (nativeSupported) {
+      try {
+        ref.current?.requestFullscreen();
+        return;
+      } catch {
+        // fall through to the CSS fallback below
+      }
+    }
+    // iOS Safari (and anything else without element fullscreen): expand
+    // the player to fill the viewport with fixed positioning instead.
+    setCssFullscreen((v) => !v);
   }, []);
+
+  // Allow exiting the CSS fullscreen fallback with Escape, and stop the page
+  // behind it from scrolling while it's open.
+  useEffect(() => {
+    if (!cssFullscreen) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setCssFullscreen(false);
+    };
+    document.addEventListener("keydown", onKey);
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.removeEventListener("keydown", onKey);
+      document.body.style.overflow = prevOverflow;
+    };
+  }, [cssFullscreen]);
 
   return (
     <div className="mx-auto flex w-[min(64vw,260px)] flex-col sm:w-[280px] lg:w-[clamp(260px,40vh,340px)]">
       <div
-        className="relative overflow-hidden rounded-2xl border"
-        style={{ borderColor: "var(--line)", background: "#000" }}
+        ref={boxRef}
+        className={
+          cssFullscreen
+            ? "fixed inset-0 z-[60] grid place-items-center"
+            : "relative overflow-hidden rounded-2xl border"
+        }
+        style={{
+          borderColor: cssFullscreen ? undefined : "var(--line)",
+          background: "#000",
+        }}
       >
         <Player
           ref={ref}
@@ -419,7 +465,11 @@ const VideoPlayer: React.FC<{ data: WrappedData }> = ({ data }) => {
           fps={VIDEO_FPS}
           compositionHeight={VIDEO_HEIGHT}
           compositionWidth={VIDEO_WIDTH}
-          style={{ width: "100%", display: "block" }}
+          style={
+            cssFullscreen
+              ? { width: "100vw", height: "100dvh", display: "block" }
+              : { width: "100%", display: "block" }
+          }
           clickToPlay={false}
           controls={false}
           numberOfSharedAudioTags={0}
@@ -450,11 +500,15 @@ const VideoPlayer: React.FC<{ data: WrappedData }> = ({ data }) => {
         {/* controls: fullscreen + mute */}
         <button
           onClick={goFullscreen}
-          aria-label="Full screen"
-          className="absolute bottom-3 left-3 grid h-10 w-10 place-items-center rounded-full text-white"
+          aria-label={cssFullscreen ? "Exit full screen" : "Full screen"}
+          className="absolute bottom-3 left-3 z-10 grid h-10 w-10 place-items-center rounded-full text-white"
           style={{ background: "rgba(0,0,0,0.55)" }}
         >
-          <EnterFullScreenIcon className="h-5 w-5" />
+          {cssFullscreen ? (
+            <ExitFullScreenIcon className="h-5 w-5" />
+          ) : (
+            <EnterFullScreenIcon className="h-5 w-5" />
+          )}
         </button>
         <button
           onClick={toggleMute}
