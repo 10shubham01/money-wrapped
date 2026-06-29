@@ -40,3 +40,6 @@ build
 
 # personal bank/payment statements — never commit
 *.pdf
+
+# local agent/story logs
+asterix_story_log.json
