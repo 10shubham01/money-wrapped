@@ -54,6 +54,13 @@ const Pill: React.FC<{
   </Pop>
 );
 
+// Picks a display font-size so a numeral string always fits a target width —
+// guards crore-scale amounts from overflowing the fixed 1080px canvas. The
+// 0.56 factor is the average glyph advance (digits/₹/commas) for the display
+// face; the result is capped at the scene's intended size for normal values.
+const fitDisplay = (text: string, maxWidth: number, maxFont: number) =>
+  Math.min(maxFont, Math.floor(maxWidth / Math.max(text.length * 0.56, 1)));
+
 // ---------------------------------------------------------------------------
 // 1 — INTRO
 // ---------------------------------------------------------------------------
@@ -131,6 +138,9 @@ export const SceneIntro: React.FC<{ data: Data }> = ({ data }) => {
 export const SceneTotalSpent: React.FC<{ data: Data }> = ({ data }) => {
   const pop = useSpr(14, 10);
   const months = data.monthly.length || 3;
+  const totalStr =
+    "₹" + Math.round(data.totalSent).toLocaleString("en-IN");
+  const totalFont = fitDisplay(totalStr, 900, 184);
   return (
     <Scene bg={C.blue} a="#6E96FF" b="#0A3AC9">
       <CoinShower count={22} seed="spent" delay={8} />
@@ -141,11 +151,12 @@ export const SceneTotalSpent: React.FC<{ data: Data }> = ({ data }) => {
         <div
           style={{
             fontFamily: display,
-            fontSize: 184,
+            fontSize: totalFont,
             lineHeight: 1,
             marginTop: 24,
             scale: String(interpolate(pop, [0, 1], [0.4, 1])),
             textShadow: "0 18px 50px rgba(0,0,0,0.3)",
+            whiteSpace: "nowrap",
           }}
         >
           <CountUp value={data.totalSent} delay={14} dur={48} prefix="₹" />
@@ -169,6 +180,7 @@ export const SceneTotalSpent: React.FC<{ data: Data }> = ({ data }) => {
 export const SceneTransactions: React.FC<{ data: Data }> = ({ data }) => {
   const frame = useCurrentFrame();
   const perDay = Math.round(data.txnCount / Math.max(1, data.activeDays));
+  const countFont = fitDisplay(data.txnCount.toLocaleString("en-IN"), 900, 300);
   const ring = (i: number) => {
     const t = (frame - i * 8) % 60;
     const s = interpolate(t, [0, 60], [0.3, 2.2], { extrapolateLeft: "clamp", extrapolateRight: "clamp" });
@@ -199,7 +211,7 @@ export const SceneTransactions: React.FC<{ data: Data }> = ({ data }) => {
           ))}
         </div>
         <Eyebrow color={C.coral}>You tapped “Pay”</Eyebrow>
-        <div style={{ fontFamily: display, fontSize: 300, lineHeight: 0.9, marginTop: 8 }}>
+        <div style={{ fontFamily: display, fontSize: countFont, lineHeight: 0.9, marginTop: 8, whiteSpace: "nowrap" }}>
           <CountUp value={data.txnCount} delay={12} dur={46} />
         </div>
         <RevealUp delay={34}>
@@ -471,6 +483,9 @@ export const SceneBiggestSplurge: React.FC<{ data: Data }> = ({ data }) => {
   const frame = useCurrentFrame();
   const pop = useSpr(12, 9);
   const shake = Math.sin(frame * 0.8) * ease(frame, [14, 34], [7, 0]);
+  const amtStr =
+    "₹" + Math.round(data.biggest.amount).toLocaleString("en-IN");
+  const amtFont = fitDisplay(amtStr, 900, 220);
   return (
     <Scene bg={C.ink} a="#7A4DD6" b="#C82E5A">
       <CoinShower count={16} seed="splurge" delay={6} />
@@ -479,19 +494,31 @@ export const SceneBiggestSplurge: React.FC<{ data: Data }> = ({ data }) => {
         <div
           style={{
             fontFamily: display,
-            fontSize: 220,
+            fontSize: amtFont,
             lineHeight: 1,
             marginTop: 24,
             color: C.yellow,
             translate: `${shake}px 0px`,
             scale: String(interpolate(pop, [0, 1], [0.3, 1])),
             textShadow: "0 0 60px rgba(255,201,60,0.5)",
+            whiteSpace: "nowrap",
           }}
         >
           <CountUp value={data.biggest.amount} delay={12} dur={42} prefix="₹" />
         </div>
         <RevealUp delay={48} style={{ marginTop: 60 }}>
-          <div style={{ fontFamily: display, fontSize: 80 }}>to {data.biggest.name}</div>
+          <div
+            style={{
+              fontFamily: display,
+              fontSize: 80,
+              maxWidth: 900,
+              whiteSpace: "nowrap",
+              overflow: "hidden",
+              textOverflow: "ellipsis",
+            }}
+          >
+            to {data.biggest.name}
+          </div>
         </RevealUp>
         <RevealUp delay={56}>
           <div style={{ fontFamily: sans, fontSize: 46, fontWeight: 500, opacity: 0.8 }}>
@@ -732,7 +759,15 @@ export const SceneCircle: React.FC<{ data: Data }> = ({ data }) => {
     <Scene bg={C.teal} a="#7FE9EC" b="#008C90" fg={C.ink}>
       <div style={{ display: "flex", flexDirection: "column", alignItems: "center", textAlign: "center" }}>
         <Eyebrow color={C.ink}>Your money circle</Eyebrow>
-        <div style={{ fontFamily: display, fontSize: 216, lineHeight: 1, marginTop: 20 }}>
+        <div
+          style={{
+            fontFamily: display,
+            fontSize: fitDisplay(data.uniquePayees.toLocaleString("en-IN"), 900, 216),
+            lineHeight: 1,
+            marginTop: 20,
+            whiteSpace: "nowrap",
+          }}
+        >
           <CountUp value={data.uniquePayees} delay={12} dur={42} />
         </div>
         <RevealUp delay={36} style={{ marginTop: 2 }}>
@@ -754,6 +789,165 @@ export const SceneCircle: React.FC<{ data: Data }> = ({ data }) => {
             <Dot key={i} i={i} />
           ))}
         </div>
+      </div>
+    </Scene>
+  );
+};
+
+// ---------------------------------------------------------------------------
+// WHERE IT CAME FROM (spend split by funding account) — donut + legend
+// ---------------------------------------------------------------------------
+// Editorial ranked card. The top source is filled with the warm accent so it
+// reads as the headline; the rest are quiet glass panels — one cohesive
+// family of tones over the violet, no clashing chart colours.
+const AccountCard: React.FC<{
+  label: string;
+  total: number;
+  pct: number;
+  primary: boolean;
+  delay: number;
+}> = ({ label, total, pct, primary, delay }) => {
+  const s = useSpr(delay, 18);
+  const fg = primary ? C.ink : C.paper;
+  return (
+    <div
+      style={{
+        display: "flex",
+        alignItems: "center",
+        gap: 30,
+        padding: "30px 40px",
+        borderRadius: 30,
+        color: fg,
+        background: primary ? C.yellow : "rgba(255,255,255,0.07)",
+        border: primary ? "none" : "1px solid rgba(255,255,255,0.16)",
+        boxShadow: primary ? "0 22px 54px rgba(0,0,0,0.30)" : "none",
+        opacity: interpolate(s, [0, 0.5], [0, 1], { extrapolateRight: "clamp" }),
+        translate: `0px ${interpolate(s, [0, 1], [46, 0])}px`,
+      }}
+    >
+      {/* rupee coin token — threads the amber accent through every row */}
+      <div
+        style={{
+          width: 80,
+          height: 80,
+          borderRadius: 24,
+          flexShrink: 0,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          fontFamily: display,
+          fontSize: 46,
+          lineHeight: 1,
+          background: primary ? C.ink : C.yellow,
+          color: primary ? C.yellow : C.ink,
+        }}
+      >
+        ₹
+      </div>
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div
+          style={{
+            fontFamily: sans,
+            fontWeight: 700,
+            fontSize: 44,
+            lineHeight: 1.1,
+            whiteSpace: "nowrap",
+            overflow: "hidden",
+            textOverflow: "ellipsis",
+          }}
+        >
+          {label}
+        </div>
+        <div
+          style={{
+            fontFamily: sans,
+            fontSize: 28,
+            marginTop: 4,
+            opacity: primary ? 0.72 : 0.6,
+          }}
+        >
+          {formatCompactINR(total)}
+        </div>
+      </div>
+      <div
+        style={{
+          fontFamily: display,
+          fontSize: 80,
+          lineHeight: 0.9,
+          flexShrink: 0,
+        }}
+      >
+        {pct}
+        <span style={{ fontSize: 40 }}>%</span>
+      </div>
+    </div>
+  );
+};
+
+export const SceneAccounts: React.FC<{ data: Data }> = ({ data }) => {
+  const accounts = (
+    data.accounts && data.accounts.length
+      ? data.accounts
+      : [
+          {
+            key: "x",
+            label: "Your account",
+            total: data.totalSent,
+            count: data.paidCount,
+            pct: 100,
+          },
+      ]
+  ).slice(0, 4);
+
+  const n = accounts.length;
+
+  return (
+    <Scene bg={C.violet} a="#A78CFF" b="#3D2199" align="flex-start">
+      <Eyebrow color={C.yellow}>Where it spent from</Eyebrow>
+
+      <div style={{ width: "100%", marginTop: 60 }}>
+        <RevealUp delay={6}>
+          <div style={{ fontFamily: display, fontSize: 92, lineHeight: 1 }}>
+            <span style={{ color: C.yellow }}>{n}</span>{" "}
+            {n === 1 ? "account" : "accounts"}
+          </div>
+        </RevealUp>
+        <RevealUp delay={12}>
+          <div
+            style={{
+              fontFamily: sans,
+              fontSize: 34,
+              opacity: 0.72,
+              marginTop: 12,
+              maxWidth: 780,
+            }}
+          >
+            {n === 1
+              ? "Every rupee flowed in from a single account."
+              : "Ranked by how much each one moved."}
+          </div>
+        </RevealUp>
+      </div>
+
+      <div
+        style={{
+          width: "100%",
+          display: "flex",
+          flexDirection: "column",
+          gap: 22,
+          marginTop: 92,
+        }}
+      >
+        {accounts.map((a, i) => (
+          <AccountCard
+            key={a.key}
+            label={a.label}
+            total={a.total}
+            pct={a.pct}
+            primary={i === 0}
+            delay={26 + i * 8}
+          />
+        ))}
       </div>
     </Scene>
   );

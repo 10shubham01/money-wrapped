@@ -65,11 +65,20 @@ export function extractTransactions(fullText: string): Txn[] {
     const amount = parseFloat(am[1].replace(/,/g, ""));
     if (!Number.isFinite(amount)) continue;
 
-    const source: Txn["source"] = /RuPay credit card/.test(block)
-      ? "credit"
-      : /Kotak/.test(block)
-        ? "kotak"
-        : "other";
+    const isCredit = /RuPay credit card/.test(block);
+    const source: Txn["source"] = isCredit ? "credit" : "other";
+
+    // funding instrument, taken verbatim from "Paid by <bank/card> <last4>"
+    // so we never assume which bank/card the user holds.
+    let account = "Other account";
+    const credit = block.match(/Paid by\s+(.+?\|\s*RuPay credit card)/);
+    if (credit) {
+      account = credit[1];
+    } else {
+      const bank = block.match(/Paid by\s+(.+?(?:XX\d{2,6}|\d{3,6}))/);
+      if (bank) account = bank[1];
+    }
+    account = account.replace(/\s+/g, " ").replace(/\s*\|\s*/g, " · ").trim();
 
     txns.push({
       date: `${dm[1]} ${dm[2]} ${dm[3]}`,
@@ -79,6 +88,7 @@ export function extractTransactions(fullText: string): Txn[] {
       dir,
       amount,
       source,
+      account,
     });
   }
   return txns;

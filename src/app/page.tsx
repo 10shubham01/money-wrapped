@@ -3,36 +3,34 @@
 import {
   ArrowRightIcon,
   Cross1Icon,
+  EnterFullScreenIcon,
   FileTextIcon,
-  GitHubLogoIcon,
-  HeartFilledIcon,
   LockClosedIcon,
+  PauseIcon,
+  PlayIcon,
   QuestionMarkCircledIcon,
   ReloadIcon,
+  SpeakerLoudIcon,
+  SpeakerOffIcon,
 } from "@radix-ui/react-icons";
-import { Player } from "@remotion/player";
+import { Player, type PlayerRef } from "@remotion/player";
 import type { NextPage } from "next";
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   DURATION_IN_FRAMES,
   VIDEO_FPS,
   VIDEO_HEIGHT,
   VIDEO_WIDTH,
 } from "../../types/constants";
+import { GPayLogo, SiteFooter, SiteHeader } from "../components/site";
 import { formatCompactINR, type WrappedData } from "../lib/analytics";
-import { Main } from "../remotion/MoneyWrapped/Main";
+import { Main, SECTIONS } from "../remotion/MoneyWrapped/Main";
 
 type Status =
   | { kind: "idle" }
   | { kind: "parsing" }
   | { kind: "ready"; data: WrappedData }
   | { kind: "error"; message: string };
-
-// --- editorial palette ------------------------------------------------------
-const INK = "#0A0B0D"; // page canvas
-const PANEL = "#101216"; // raised surface
-const LINE = "#23262E"; // hairline rule
-const AMBER = "#FFC93C";
 
 const Home: NextPage = () => {
   const [status, setStatus] = useState<Status>({ kind: "idle" });
@@ -41,6 +39,7 @@ const Home: NextPage = () => {
   const inputRef = useRef<HTMLInputElement>(null);
 
   const ready = status.kind === "ready";
+  const reset = useCallback(() => setStatus({ kind: "idle" }), []);
   const openPicker = useCallback(() => inputRef.current?.click(), []);
 
   const handleFile = useCallback(async (file: File) => {
@@ -72,10 +71,7 @@ const Home: NextPage = () => {
   );
 
   return (
-    <div
-      className="flex min-h-screen flex-col antialiased"
-      style={{ background: INK, color: "#fff" }}
-    >
+    <>
       <input
         ref={inputRef}
         type="file"
@@ -87,12 +83,12 @@ const Home: NextPage = () => {
         }}
       />
 
-      <div className="mx-auto flex w-full max-w-6xl flex-1 flex-col px-6">
-        <Masthead onReset={() => setStatus({ kind: "idle" })} ready={ready} />
+      <div className="mx-auto flex w-full max-w-6xl flex-1 flex-col px-5 sm:px-6">
+        <SiteHeader onBrandClick={reset} />
 
-        <main className="flex flex-1 flex-col justify-center py-10 lg:py-14">
+        <main className="flex flex-1 flex-col justify-center py-8 sm:py-12">
           {ready ? (
-            <Result data={status.data} />
+            <Result data={status.data} onReset={reset} />
           ) : (
             <Landing
               status={status}
@@ -105,90 +101,16 @@ const Home: NextPage = () => {
           )}
         </main>
 
-        <Footer />
+        <SiteFooter />
       </div>
 
       {help && <HelpModal onClose={() => setHelp(false)} />}
-    </div>
+    </>
   );
 };
 
 // ===========================================================================
-// MASTHEAD
-// ===========================================================================
-const Masthead: React.FC<{ onReset: () => void; ready: boolean }> = ({
-  onReset,
-  ready,
-}) => (
-  <header
-    className="flex shrink-0 items-center justify-between border-b py-5"
-    style={{ borderColor: LINE }}
-  >
-    <button onClick={onReset} className="flex items-center gap-3 text-left">
-      <span
-        className="grid h-9 w-9 place-items-center rounded-md text-sm font-black"
-        style={{ background: AMBER, color: INK }}
-      >
-        M
-      </span>
-      <span className="flex flex-col leading-none">
-        <span className="text-[15px] font-extrabold tracking-tight">
-          Money Wrapped
-        </span>
-        <span className="mt-1 text-[10px] font-medium uppercase tracking-[0.22em] text-white/35">
-          Payments, in review
-        </span>
-      </span>
-    </button>
-
-    {ready ? (
-      <button
-        onClick={onReset}
-        className="inline-flex items-center gap-2 rounded-full border px-4 py-2 text-xs font-semibold text-white/75 transition-colors hover:border-white/40 hover:text-white"
-        style={{ borderColor: LINE, background: PANEL }}
-      >
-        <ReloadIcon /> Make another
-      </button>
-    ) : (
-      <span className="hidden text-[11px] font-semibold uppercase tracking-[0.22em] text-white/30 sm:block">
-        Edition · 2026
-      </span>
-    )}
-  </header>
-);
-
-// ===========================================================================
-// FOOTER
-// ===========================================================================
-const Footer: React.FC = () => (
-  <footer
-    className="flex shrink-0 items-center justify-center gap-1.5 border-t py-5 text-xs text-white/40"
-    style={{ borderColor: LINE }}
-  >
-    <span>Made with</span>
-    <HeartFilledIcon className="text-[#FF5C46]" />
-    <span>by</span>
-    <a
-      href="https://github.com/10shubham01"
-      target="_blank"
-      rel="noopener noreferrer"
-      className="inline-flex items-center gap-1 font-medium text-white/60 transition-colors hover:text-white"
-    >
-      <GitHubLogoIcon /> github/10shubham01
-    </a>
-  </footer>
-);
-
-// shared editorial eyebrow: a hairline + small tracked label
-const Eyebrow: React.FC<{ children: React.ReactNode }> = ({ children }) => (
-  <div className="flex items-center gap-3 text-[11px] font-semibold uppercase tracking-[0.22em] text-white/45">
-    <span className="h-px w-9" style={{ background: AMBER }} />
-    {children}
-  </div>
-);
-
-// ===========================================================================
-// LANDING — editorial two-column hero
+// LANDING — centered "cinema" hero with a ticket-stub upload
 // ===========================================================================
 const Landing: React.FC<{
   status: Status;
@@ -201,60 +123,133 @@ const Landing: React.FC<{
   const parsing = status.kind === "parsing";
 
   return (
-    <div className="grid w-full items-center gap-14 lg:grid-cols-[1.05fr_0.95fr]">
-      {/* ---- left: editorial copy + upload ---- */}
-      <div className="flex flex-col">
-        <div className="mw-fade-up" style={{ animationDelay: "40ms" }}>
-          <Eyebrow>01 — Bring your statement</Eyebrow>
+    <div className="flex w-full flex-col items-center text-center">
+      <div
+        className="mw-fade-up flex items-center gap-3 text-[10px] font-semibold uppercase tracking-[0.24em] sm:text-[11px]"
+        style={{ color: "var(--fg-3)", animationDelay: "40ms" }}
+      >
+        <span className="h-px w-6 sm:w-8" style={{ background: "var(--accent)" }} />
+        Money Wrapped · 2026 Edition
+        <span className="h-px w-6 sm:w-8" style={{ background: "var(--accent)" }} />
+      </div>
+
+      <h1
+        className="mw-fade-up mt-5 text-[2rem] font-extrabold leading-[1.02] tracking-tight sm:text-5xl"
+        style={{ animationDelay: "100ms" }}
+      >
+        Your{" "}
+        <span
+          style={{
+            backgroundImage:
+              "linear-gradient(90deg, var(--accent), var(--coral))",
+            WebkitBackgroundClip: "text",
+            backgroundClip: "text",
+            color: "transparent",
+          }}
+        >
+          money
+        </span>
+        , wrapped.
+      </h1>
+
+      <p
+        className="mw-fade-up mt-4 max-w-md text-[15px] leading-relaxed sm:text-base"
+        style={{ color: "var(--fg-3)", animationDelay: "160ms" }}
+      >
+        A cinematic recap of your year in payments.
+      </p>
+
+      {/* reel preview — the hero */}
+      <div
+        className="mw-fade-up mt-7 flex flex-col items-center sm:mt-8"
+        style={{ animationDelay: "220ms" }}
+      >
+        <div
+          className="w-[clamp(188px,26vh,248px)] overflow-hidden rounded-2xl border"
+          style={{ borderColor: "var(--line)", background: "#000" }}
+        >
+          <Cover busy={parsing} />
+        </div>
+        <span
+          className="mt-3 inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-[11px] font-semibold"
+          style={{ borderColor: "var(--line)", color: "var(--fg-3)" }}
+        >
+          <PlayIcon className="h-3 w-3" /> 60-second recap
+        </span>
+      </div>
+
+      {/* ticket-stub upload */}
+      <div
+        role="button"
+        tabIndex={0}
+        onClick={openPicker}
+        onKeyDown={(e) => (e.key === "Enter" || e.key === " ") && openPicker()}
+        onDragOver={(e) => {
+          e.preventDefault();
+          setDragging(true);
+        }}
+        onDragLeave={() => setDragging(false)}
+        onDrop={onDrop}
+        className="mw-fade-up group relative mt-7 flex w-full max-w-xl cursor-pointer overflow-hidden rounded-2xl border transition-colors sm:mt-8"
+        style={{
+          borderColor: dragging ? "var(--accent)" : "var(--line)",
+          background: dragging ? "var(--panel-2)" : "var(--panel)",
+          animationDelay: "280ms",
+        }}
+      >
+        {/* stub */}
+        <div
+          className="flex w-[54px] shrink-0 items-center justify-center sm:w-[64px]"
+          style={{ background: "var(--accent)" }}
+        >
+          <span
+            className="text-[10px] font-black uppercase tracking-[0.3em] sm:text-[11px]"
+            style={{
+              writingMode: "vertical-rl",
+              transform: "rotate(180deg)",
+              color: "var(--accent-ink)",
+            }}
+          >
+            Admit One
+          </span>
         </div>
 
-        <h1
-          className="mw-fade-up mt-5 text-4xl font-extrabold leading-[1.02] tracking-tight sm:text-5xl"
-          style={{ animationDelay: "100ms" }}
-        >
-          Your{" "}
-          <span className="bg-gradient-to-r from-[#FFC93C] to-[#FF5C46] bg-clip-text text-transparent">
-            money
-          </span>
-          , wrapped.
-        </h1>
-
-        <p
-          className="mw-fade-up mt-5 max-w-md text-[15px] leading-relaxed text-white/55 sm:text-base"
-          style={{ animationDelay: "160ms" }}
-        >
-          Drop in your payment statement and we turn a year of taps into a
-          cinematic, share-ready recap — composed entirely on your device.
-        </p>
-
-        {/* upload field */}
-        <div
-          role="button"
-          tabIndex={0}
-          onClick={openPicker}
-          onKeyDown={(e) => (e.key === "Enter" || e.key === " ") && openPicker()}
-          onDragOver={(e) => {
-            e.preventDefault();
-            setDragging(true);
-          }}
-          onDragLeave={() => setDragging(false)}
-          onDrop={onDrop}
-          className="mw-fade-up group mt-8 flex w-full max-w-md cursor-pointer items-center gap-4 rounded-xl border p-2.5 pl-5 transition-colors"
-          style={{
-            background: dragging ? "#15171C" : PANEL,
-            borderColor: dragging ? AMBER : LINE,
-            animationDelay: "220ms",
-          }}
-        >
-          <FileTextIcon className="h-5 w-5 shrink-0 text-white/45" />
-          <span className="flex-1 truncate text-left text-[15px] text-white/70">
-            {parsing
-              ? "Reading your statement…"
-              : "Drop your PDF, or click to browse"}
-          </span>
+        {/* perforation */}
+        <div className="relative w-0">
+          <div
+            className="h-full border-l-2 border-dashed"
+            style={{ borderColor: "var(--line)" }}
+          />
           <span
-            className="grid h-12 w-12 shrink-0 place-items-center rounded-lg transition-transform group-hover:translate-x-0.5"
-            style={{ background: AMBER, color: INK }}
+            className="absolute -left-[7px] -top-2 h-3.5 w-3.5 rounded-full"
+            style={{ background: "var(--bg)" }}
+          />
+          <span
+            className="absolute -bottom-2 -left-[7px] h-3.5 w-3.5 rounded-full"
+            style={{ background: "var(--bg)" }}
+          />
+        </div>
+
+        {/* body */}
+        <div className="flex flex-1 items-center gap-3 p-3 pl-4 sm:gap-4 sm:p-5">
+          <FileTextIcon
+            className="hidden h-5 w-5 shrink-0 sm:block"
+            style={{ color: "var(--fg-3)" }}
+          />
+          <div className="min-w-0 flex-1 text-left">
+            <div className="truncate text-sm font-semibold sm:text-[15px]">
+              {parsing ? "Reading your statement…" : "Drop your statement PDF"}
+            </div>
+            <div
+              className="mt-0.5 truncate text-xs"
+              style={{ color: "var(--fg-3)" }}
+            >
+              tap to browse · 1–6 months
+            </div>
+          </div>
+          <span
+            className="grid h-11 w-11 shrink-0 place-items-center rounded-xl transition-transform group-hover:translate-x-0.5 sm:h-12 sm:w-12"
+            style={{ background: "var(--accent)", color: "var(--accent-ink)" }}
           >
             {parsing ? (
               <span className="h-5 w-5 animate-spin rounded-full border-2 border-black/70 border-t-transparent" />
@@ -263,228 +258,528 @@ const Landing: React.FC<{
             )}
           </span>
         </div>
+      </div>
 
-        {/* supported statement + accepted range */}
-        <div
-          className="mw-fade-up mt-4 flex flex-wrap items-center gap-x-4 gap-y-2"
-          style={{ animationDelay: "260ms" }}
+      {status.kind === "error" ? (
+        <p
+          className="mt-4 w-full max-w-xl rounded-lg border px-4 py-2.5 text-sm font-medium"
+          style={{
+            background: "var(--err-bg)",
+            borderColor: "var(--err-line)",
+            color: "var(--err-fg)",
+          }}
         >
-          <span className="flex items-center gap-2">
-            <span className="text-[10px] font-semibold uppercase tracking-[0.18em] text-white/30">
-              Supported
-            </span>
-            <GPayLogo />
-          </span>
-          <span className="h-3.5 w-px" style={{ background: LINE }} />
-          <span className="text-xs text-white/45">
-            Statements covering{" "}
-            <span className="font-semibold text-white/70">1–6 months</span>
-          </span>
-        </div>
-
-        {status.kind === "error" ? (
-          <p
-            className="mt-4 w-full max-w-md rounded-lg border px-4 py-2.5 text-sm font-medium text-[#FF9E80]"
-            style={{ background: "#1E1311", borderColor: "#43201A" }}
-          >
-            {status.message}
-          </p>
-        ) : (
+          {status.message}
+        </p>
+      ) : (
+        <>
           <div
-            className="mw-fade-up mt-4 flex flex-wrap items-center gap-x-5 gap-y-2"
-            style={{ animationDelay: "280ms" }}
+            className="mw-fade-up mt-5 flex flex-wrap items-center justify-center gap-x-4 gap-y-2 text-xs"
+            style={{ color: "var(--fg-3)", animationDelay: "340ms" }}
           >
+            <span className="flex items-center gap-2">
+              <span
+                className="text-[10px] font-semibold uppercase tracking-[0.18em]"
+                style={{ color: "var(--fg-4)" }}
+              >
+                Supported
+              </span>
+              <GPayLogo />
+            </span>
+            <Dot />
             <button
               onClick={onHelp}
-              className="inline-flex items-center gap-1.5 text-sm font-semibold text-[#FFD66B] transition-colors hover:text-[#FFC93C]"
+              className="inline-flex items-center gap-1.5 font-semibold transition-opacity hover:opacity-70"
+              style={{ color: "var(--accent-text)" }}
             >
               <QuestionMarkCircledIcon /> How to get your statement
             </button>
-            <span className="flex items-center gap-1.5 text-xs text-white/40">
-              <LockClosedIcon /> Never uploaded · no sign-up
-            </span>
+          </div>
+          <p
+            className="mw-fade-up mt-3 text-[11px]"
+            style={{ color: "var(--fg-4)", animationDelay: "380ms" }}
+          >
+            Support for more statements coming soon.
+          </p>
+        </>
+      )}
+    </div>
+  );
+};
+
+const Dot: React.FC = () => (
+  <span className="h-1 w-1 rounded-full" style={{ background: "var(--fg-4)" }} />
+);
+
+// ===========================================================================
+// VIDEO PLAYER — audio on by default, per-section playback, no looping
+// ===========================================================================
+const VideoPlayer: React.FC<{ data: WrappedData }> = ({ data }) => {
+  const ref = useRef<PlayerRef>(null);
+  const [playing, setPlaying] = useState(false);
+  const [muted, setMuted] = useState(false);
+  // index of the section currently being scrubbed through (for highlighting)
+  const [activeIdx, setActiveIdx] = useState<number | null>(null);
+  // when playing a single section, the frame at which to auto-stop
+  const stopAtRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    const p = ref.current;
+    if (!p) return;
+    const onPlay = () => setPlaying(true);
+    const onPause = () => setPlaying(false);
+    const onFrame = (e: { detail: { frame: number } }) => {
+      const f = e.detail.frame;
+      if (stopAtRef.current !== null && f >= stopAtRef.current) {
+        stopAtRef.current = null;
+        p.pause();
+      }
+      const idx = SECTIONS.findIndex((s) => f >= s.start && f < s.end);
+      setActiveIdx(idx === -1 ? null : idx);
+    };
+    p.addEventListener("play", onPlay);
+    p.addEventListener("pause", onPause);
+    p.addEventListener("frameupdate", onFrame);
+    return () => {
+      p.removeEventListener("play", onPlay);
+      p.removeEventListener("pause", onPause);
+      p.removeEventListener("frameupdate", onFrame);
+    };
+  }, []);
+
+  const unmuteOnce = useCallback((p: PlayerRef) => {
+    if (p.isMuted()) {
+      p.unmute();
+      setMuted(false);
+    }
+  }, []);
+
+  // big centre button: free play/pause of the whole recap (no auto-stop)
+  const toggle = useCallback(() => {
+    const p = ref.current;
+    if (!p) return;
+    unmuteOnce(p);
+    stopAtRef.current = null;
+    p.toggle();
+  }, [unmuteOnce]);
+
+  // play one section from its start and stop when it ends
+  const playSection = useCallback(
+    (i: number) => {
+      const p = ref.current;
+      if (!p) return;
+      const s = SECTIONS[i];
+      unmuteOnce(p);
+      p.seekTo(s.start);
+      stopAtRef.current = s.end;
+      p.play();
+    },
+    [unmuteOnce],
+  );
+
+  // combined CTA: play the whole thing from the top
+  const playFull = useCallback(() => {
+    const p = ref.current;
+    if (!p) return;
+    unmuteOnce(p);
+    stopAtRef.current = null;
+    p.seekTo(0);
+    p.play();
+  }, [unmuteOnce]);
+
+  const toggleMute = useCallback((e: React.MouseEvent) => {
+    e.stopPropagation();
+    const p = ref.current;
+    if (!p) return;
+    if (p.isMuted()) {
+      p.unmute();
+      setMuted(false);
+    } else {
+      p.mute();
+      setMuted(true);
+    }
+  }, []);
+
+  const goFullscreen = useCallback((e: React.MouseEvent) => {
+    e.stopPropagation();
+    ref.current?.requestFullscreen();
+  }, []);
+
+  return (
+    <div className="mx-auto flex w-[min(64vw,260px)] flex-col sm:w-[280px] lg:w-[clamp(260px,40vh,340px)]">
+      <div
+        className="relative overflow-hidden rounded-2xl border"
+        style={{ borderColor: "var(--line)", background: "#000" }}
+      >
+        <Player
+          ref={ref}
+          component={Main}
+          inputProps={data}
+          durationInFrames={DURATION_IN_FRAMES}
+          fps={VIDEO_FPS}
+          compositionHeight={VIDEO_HEIGHT}
+          compositionWidth={VIDEO_WIDTH}
+          style={{ width: "100%", display: "block" }}
+          clickToPlay={false}
+          controls={false}
+          numberOfSharedAudioTags={0}
+        />
+
+        {/* tap layer + big centered play/pause */}
+        <button
+          onClick={toggle}
+          aria-label={playing ? "Pause" : "Play"}
+          className="group absolute inset-0 grid place-items-center"
+        >
+          <span
+            className={`grid place-items-center rounded-full shadow-lg transition-all duration-200 ${
+              playing
+                ? "h-14 w-14 opacity-0 group-hover:opacity-100 group-active:opacity-100"
+                : "h-[72px] w-[72px] opacity-100"
+            }`}
+            style={{ background: "var(--accent)", color: "var(--accent-ink)" }}
+          >
+            {playing ? (
+              <PauseIcon className="h-7 w-7" />
+            ) : (
+              <PlayIcon className="h-8 w-8 translate-x-[2px]" />
+            )}
+          </span>
+        </button>
+
+        {/* controls: fullscreen + mute */}
+        <button
+          onClick={goFullscreen}
+          aria-label="Full screen"
+          className="absolute bottom-3 left-3 grid h-10 w-10 place-items-center rounded-full text-white"
+          style={{ background: "rgba(0,0,0,0.55)" }}
+        >
+          <EnterFullScreenIcon className="h-5 w-5" />
+        </button>
+        <button
+          onClick={toggleMute}
+          aria-label={muted ? "Unmute" : "Mute"}
+          className="absolute bottom-3 right-3 grid h-10 w-10 place-items-center rounded-full text-white"
+          style={{ background: "rgba(0,0,0,0.55)" }}
+        >
+          {muted ? (
+            <SpeakerOffIcon className="h-5 w-5" />
+          ) : (
+            <SpeakerLoudIcon className="h-5 w-5" />
+          )}
+        </button>
+      </div>
+
+      {/* chapter grid — GitHub-style squares; number only, label on hover */}
+      <div
+        className="mt-4 grid gap-1.5"
+        style={{ gridTemplateColumns: "repeat(6, minmax(0, 1fr))" }}
+      >
+        {SECTIONS.map((s, i) => {
+          const active = i === activeIdx;
+          return (
+            <button
+              key={s.label}
+              onClick={() => playSection(i)}
+              aria-label={`Play ${s.label}`}
+              className="group relative grid place-items-center rounded-[5px] border text-xs font-bold tabular-nums transition-colors"
+              style={{
+                aspectRatio: "1 / 1",
+                borderColor: active ? "var(--accent)" : "var(--line)",
+                background: active ? "var(--accent)" : "var(--panel)",
+                color: active ? "var(--accent-ink)" : "var(--fg-2)",
+              }}
+            >
+              {i + 1}
+              {/* hover label (desktop only — needs a pointer) */}
+              <span
+                className="pointer-events-none absolute bottom-full left-1/2 z-10 mb-1.5 hidden -translate-x-1/2 whitespace-nowrap rounded-md border px-2 py-1 text-[10px] font-semibold opacity-0 transition-opacity group-hover:opacity-100 sm:block"
+                style={{
+                  background: "var(--panel-2)",
+                  borderColor: "var(--line)",
+                  color: "var(--fg)",
+                }}
+              >
+                {s.label}
+              </span>
+            </button>
+          );
+        })}
+      </div>
+
+      {/* full-video bar — the combined CTA */}
+      <button
+        onClick={playFull}
+        className="mt-3 flex h-9 w-full items-center justify-center gap-2 rounded-[5px] text-xs font-bold uppercase tracking-[0.14em] transition-opacity hover:opacity-90"
+        style={{ background: "var(--accent)", color: "var(--accent-ink)" }}
+      >
+        <PlayIcon className="h-3.5 w-3.5" /> Full recap
+      </button>
+    </div>
+  );
+};
+
+// ===========================================================================
+// RESULT — video on top (mobile), rich highlights + account split
+// ===========================================================================
+const ACCOUNT_COLORS = ["#FFC93C", "#2F6BFF", "#00C2C7", "#FF4D9D"];
+
+const Result: React.FC<{ data: WrappedData; onReset: () => void }> = ({
+  data,
+  onReset,
+}) => {
+  return (
+    <div className="grid w-full items-start gap-9 lg:grid-cols-[1fr_minmax(260px,0.82fr)] lg:gap-12">
+      {/* video — first in DOM (top on mobile), right column on desktop */}
+      <div className="order-1 flex min-w-0 flex-col items-center lg:order-2">
+        <VideoPlayer data={data} />
+        <button
+          onClick={onReset}
+          className="mt-4 inline-flex items-center gap-2 rounded-full border px-4 py-2.5 text-sm font-semibold transition-colors"
+          style={{
+            borderColor: "var(--line)",
+            background: "var(--panel)",
+            color: "var(--fg-2)",
+          }}
+        >
+          <ReloadIcon /> Make another
+        </button>
+      </div>
+
+      {/* meta */}
+      <div className="order-2 flex min-w-0 flex-col lg:order-1">
+        <div
+          className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.22em]"
+          style={{ color: "var(--fg-3)" }}
+        >
+          <span className="h-1.5 w-1.5 rounded-full bg-[#34d98a]" /> Now playing
+        </div>
+
+        <h1 className="mt-4 text-3xl font-extrabold leading-[1.04] tracking-tight sm:text-4xl">
+          @{data.handle}&apos;s Money Wrapped
+        </h1>
+        <p className="mt-2 text-sm" style={{ color: "var(--fg-3)" }}>
+          {data.periodLabel}
+        </p>
+
+        {/* highlights */}
+        <div className="mt-6 grid grid-cols-2 gap-3">
+          <StatCard label="Total spent" value={formatCompactINR(data.totalSent)} />
+          <StatCard
+            label="Transactions"
+            value={data.txnCount.toLocaleString("en-IN")}
+          />
+          <StatCard
+            label="People & places"
+            value={data.uniquePayees.toLocaleString("en-IN")}
+          />
+          <StatCard
+            label="Biggest"
+            value={formatCompactINR(data.biggest.amount)}
+            sub={`to ${data.biggest.name}`}
+          />
+        </div>
+
+        {/* account split */}
+        {data.accounts.length > 0 && (
+          <div className="mt-7">
+            <SectionLabel>Where it was spent from</SectionLabel>
+            <div
+              className="mt-3 flex h-3 w-full overflow-hidden rounded-full"
+              style={{ background: "var(--panel-2)" }}
+            >
+              {data.accounts.map((a, i) => (
+                <div
+                  key={a.key}
+                  style={{
+                    width: `${a.pct}%`,
+                    background: ACCOUNT_COLORS[i % ACCOUNT_COLORS.length],
+                  }}
+                />
+              ))}
+            </div>
+            <dl className="mt-4 space-y-2.5">
+              {data.accounts.map((a, i) => (
+                <div key={a.key} className="flex items-center gap-3">
+                  <span
+                    className="h-2.5 w-2.5 shrink-0 rounded-full"
+                    style={{
+                      background: ACCOUNT_COLORS[i % ACCOUNT_COLORS.length],
+                    }}
+                  />
+                  <dt className="min-w-0 flex-1 truncate text-sm font-medium">
+                    {a.label}
+                  </dt>
+                  <dd className="text-sm font-bold tabular-nums">
+                    {formatCompactINR(a.total)}
+                  </dd>
+                  <dd
+                    className="w-10 text-right text-xs tabular-nums"
+                    style={{ color: "var(--fg-3)" }}
+                  >
+                    {a.pct}%
+                  </dd>
+                </div>
+              ))}
+            </dl>
           </div>
         )}
 
-        {/* editorial trust figures */}
-        <dl
-          className="mw-fade-up mt-10 grid max-w-md grid-cols-3 border-t pt-6"
-          style={{ borderColor: LINE, animationDelay: "340ms" }}
-        >
-          <Figure value="100%" label="On-device" />
-          <Figure value="0" label="Uploads" divider />
-          <Figure value="60 sec" label="Recap reel" divider />
-        </dl>
-      </div>
+        {/* paid most often */}
+        {data.topPayeesByCount.length > 0 && (
+          <div className="mt-7">
+            <SectionLabel>Paid most often</SectionLabel>
+            <div className="mt-3 flex flex-col">
+              {data.topPayeesByCount.slice(0, 3).map((p, i) => (
+                <PersonRow
+                  key={p.name}
+                  rank={i + 1}
+                  name={p.name}
+                  count={p.count}
+                  total={p.total}
+                />
+              ))}
+            </div>
+          </div>
+        )}
 
-      {/* ---- right: reel preview plate ---- */}
-      <div
-        className="mw-fade-up flex flex-col items-center lg:items-end"
-        style={{ animationDelay: "240ms" }}
-      >
+        {/* personality */}
         <div
-          className="w-[clamp(180px,30vh,236px)] overflow-hidden rounded-2xl border"
-          style={{ borderColor: LINE, background: "#000" }}
+          className="mt-7 rounded-xl border p-4"
+          style={{ borderColor: "var(--line)", background: "var(--panel)" }}
         >
-          <Cover busy={parsing} />
+          <SectionLabel>Your money personality</SectionLabel>
+          <div className="mt-1 text-lg font-bold">{data.personality.title}</div>
+          <div className="text-sm" style={{ color: "var(--fg-3)" }}>
+            {data.personality.blurb}
+          </div>
         </div>
-        <p className="mt-3 text-[11px] uppercase tracking-[0.2em] text-white/30">
-          Preview · the opening title
-        </p>
-      </div>
-    </div>
-  );
-};
 
-const Figure: React.FC<{ value: string; label: string; divider?: boolean }> = ({
-  value,
-  label,
-  divider,
-}) => (
-  <div className={divider ? "border-l pl-4" : ""} style={divider ? { borderColor: LINE } : undefined}>
-    <dt className="text-2xl font-extrabold tracking-tight">{value}</dt>
-    <dd className="mt-0.5 text-[11px] uppercase tracking-[0.16em] text-white/40">
-      {label}
-    </dd>
-  </div>
-);
-
-// Inline Google Pay mark — four-colour "G" + "Pay" (self-contained, no asset).
-const GPayLogo: React.FC = () => (
-  <span className="inline-flex items-center gap-1.5">
-    <svg viewBox="0 0 48 48" className="h-5 w-5" aria-hidden="true">
-      <path
-        fill="#4285F4"
-        d="M45.12 24.5c0-1.56-.14-3.06-.4-4.5H24v8.51h11.84c-.51 2.75-2.06 5.08-4.39 6.64v5.52h7.11c4.16-3.83 6.56-9.47 6.56-16.17z"
-      />
-      <path
-        fill="#34A853"
-        d="M24 46c5.94 0 10.92-1.97 14.56-5.33l-7.11-5.52c-1.97 1.32-4.49 2.1-7.45 2.1-5.73 0-10.58-3.87-12.31-9.07H4.34v5.7C7.96 41.07 15.4 46 24 46z"
-      />
-      <path
-        fill="#FBBC05"
-        d="M11.69 28.18C11.25 26.86 11 25.45 11 24s.25-2.86.69-4.18v-5.7H4.34C2.85 17.09 2 20.45 2 24s.85 6.91 2.34 9.88l7.35-5.7z"
-      />
-      <path
-        fill="#EA4335"
-        d="M24 10.75c3.23 0 6.13 1.11 8.41 3.29l6.31-6.31C34.91 4.18 29.93 2 24 2 15.4 2 7.96 6.93 4.34 14.12l7.35 5.7c1.73-5.2 6.58-9.07 12.31-9.07z"
-      />
-    </svg>
-    <span className="text-sm font-semibold tracking-tight text-white/80">
-      Google Pay
-    </span>
-  </span>
-);
-
-// ===========================================================================
-// RESULT — editorial two-column: meta table + video
-// ===========================================================================
-const Result: React.FC<{ data: WrappedData }> = ({ data }) => {
-  return (
-    <div className="grid w-full items-center gap-14 lg:grid-cols-[0.95fr_1.05fr]">
-      {/* ---- left: title + stat table + actions ---- */}
-      <div className="mw-fade-up flex flex-col">
-        <Eyebrow>
-          <span className="flex items-center gap-2">
-            <span className="h-1.5 w-1.5 rounded-full bg-[#34d98a]" /> Now playing
-          </span>
-        </Eyebrow>
-
-        <h1 className="mt-5 text-4xl font-extrabold leading-[1.02] tracking-tight sm:text-5xl">
-          @{data.handle}&apos;s
-          <br />
-          Money Wrapped
-        </h1>
-        <p className="mt-3 text-sm text-white/45">{data.periodLabel}</p>
-
-        <dl className="mt-7 max-w-md border-t" style={{ borderColor: LINE }}>
-          <Row label="Total spent" value={formatCompactINR(data.totalSent)} />
-          <Row label="Transactions" value={data.txnCount.toLocaleString("en-IN")} />
-          <Row label="People paid" value={data.uniquePayees.toLocaleString("en-IN")} />
-          <Row label="Top person" value={data.topPayee.name} />
-          <Row label="Your vibe" value={data.personality.title} />
-        </dl>
-
-        <p className="mt-7 flex items-center gap-1.5 text-xs text-white/40">
+        <p
+          className="mt-6 flex items-center gap-1.5 text-xs"
+          style={{ color: "var(--fg-3)" }}
+        >
           <LockClosedIcon /> Plays right here · nothing leaves your device.
         </p>
       </div>
-
-      {/* ---- right: the video ---- */}
-      <div className="mw-fade-up flex justify-center lg:justify-start">
-        <div
-          className="w-[clamp(200px,46vh,320px)] overflow-hidden rounded-2xl border"
-          style={{ borderColor: LINE, background: "#000" }}
-        >
-          <Player
-            component={Main}
-            inputProps={data}
-            durationInFrames={DURATION_IN_FRAMES}
-            fps={VIDEO_FPS}
-            compositionHeight={VIDEO_HEIGHT}
-            compositionWidth={VIDEO_WIDTH}
-            style={{ width: "100%", display: "block" }}
-            controls
-            autoPlay
-            loop
-            initiallyMuted
-          />
-        </div>
-      </div>
     </div>
   );
 };
 
-const Row: React.FC<{ label: string; value: string }> = ({ label, value }) => (
+const SectionLabel: React.FC<{ children: React.ReactNode }> = ({ children }) => (
   <div
-    className="flex items-baseline justify-between gap-6 border-b py-3"
-    style={{ borderColor: LINE }}
+    className="text-[11px] font-semibold uppercase tracking-[0.16em]"
+    style={{ color: "var(--fg-3)" }}
   >
-    <dt className="text-[11px] font-semibold uppercase tracking-[0.16em] text-white/40">
+    {children}
+  </div>
+);
+
+const StatCard: React.FC<{ label: string; value: string; sub?: string }> = ({
+  label,
+  value,
+  sub,
+}) => (
+  <div
+    className="rounded-xl border p-3.5"
+    style={{ borderColor: "var(--line)", background: "var(--panel)" }}
+  >
+    <div
+      className="text-[10px] font-semibold uppercase tracking-[0.16em]"
+      style={{ color: "var(--fg-3)" }}
+    >
       {label}
-    </dt>
-    <dd className="truncate text-right text-base font-bold">{value}</dd>
+    </div>
+    <div className="mt-1 truncate text-2xl font-extrabold tracking-tight">
+      {value}
+    </div>
+    {sub && (
+      <div className="mt-0.5 truncate text-xs" style={{ color: "var(--fg-3)" }}>
+        {sub}
+      </div>
+    )}
+  </div>
+);
+
+const initials = (name: string) =>
+  name
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((w) => w[0])
+    .join("")
+    .toUpperCase();
+
+const PersonRow: React.FC<{
+  rank: number;
+  name: string;
+  count: number;
+  total: number;
+}> = ({ rank, name, count, total }) => (
+  <div
+    className="flex items-center gap-3 border-b py-2.5"
+    style={{ borderColor: "var(--line)" }}
+  >
+    <span
+      className="grid h-9 w-9 shrink-0 place-items-center rounded-full text-xs font-bold"
+      style={{
+        background: rank === 1 ? "var(--accent)" : "var(--panel-2)",
+        color: rank === 1 ? "var(--accent-ink)" : "var(--fg-2)",
+      }}
+    >
+      {initials(name)}
+    </span>
+    <span className="min-w-0 flex-1 truncate text-sm font-semibold">{name}</span>
+    <span className="text-right text-sm font-bold tabular-nums">
+      {count}×
+    </span>
+    <span
+      className="w-16 text-right text-xs tabular-nums"
+      style={{ color: "var(--fg-3)" }}
+    >
+      {formatCompactINR(total)}
+    </span>
   </div>
 );
 
 // ===========================================================================
-// REEL COVER — clean color-blocked title card (no grid, no scanline)
+// REEL COVER — color-blocked title card (kept dark; it previews the video)
 // ===========================================================================
 const Cover: React.FC<{ busy: boolean }> = ({ busy }) => (
   <div
     className="relative flex aspect-[9/16] w-full flex-col justify-between overflow-hidden p-4"
     style={{ background: "linear-gradient(160deg,#16131F 0%,#0B0C12 60%)" }}
   >
-    {/* masthead row */}
-    <div className="flex items-center justify-between text-[9px] font-bold uppercase tracking-[0.18em] text-white/55">
+    <div className="flex items-center justify-between text-[10px] font-bold uppercase tracking-[0.18em] text-white/55">
       <span>Money Wrapped</span>
       <span>20:26</span>
     </div>
 
-    {/* title block */}
     <div className="flex flex-col">
       <span
-        className="text-3xl font-extrabold leading-[0.92] tracking-tight text-transparent"
-        style={{ WebkitTextStroke: "1.4px #FFFDF5" }}
+        className="font-extrabold leading-[0.92] tracking-tight text-transparent"
+        style={{
+          fontSize: "clamp(24px,4.6vh,32px)",
+          WebkitTextStroke: "1.4px #FFFDF5",
+        }}
       >
         MONEY
       </span>
       <span
-        className="text-3xl font-extrabold leading-[0.92] tracking-tight"
-        style={{ color: AMBER }}
+        className="font-extrabold leading-[0.92] tracking-tight"
+        style={{ fontSize: "clamp(24px,4.6vh,32px)", color: "#FFC93C" }}
       >
         WRAPPED
       </span>
-      <span className="mt-3 h-px w-10" style={{ background: "#FF5C46" }} />
+      <span className="mt-3 h-px w-[18%]" style={{ background: "#FF5C46" }} />
     </div>
 
-    {/* caption row */}
-    <div className="flex items-center justify-between text-[9px] font-semibold uppercase tracking-[0.16em] text-white/40">
+    <div className="flex items-center justify-between text-[10px] font-semibold uppercase tracking-[0.16em] text-white/40">
       <span>Your year</span>
       {busy ? (
         <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-white/30 border-t-white" />
       ) : (
-        <span style={{ color: AMBER }}>45s reel</span>
+        <span style={{ color: "#FFC93C" }}>60s recap</span>
       )}
     </div>
   </div>
@@ -502,24 +797,26 @@ const STEPS = [
 
 const HelpModal: React.FC<{ onClose: () => void }> = ({ onClose }) => (
   <div
-    className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 p-6"
+    className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-5"
     onClick={onClose}
   >
     <div
-      className="mw-fade-up w-full max-w-lg rounded-2xl border p-7"
-      style={{ background: PANEL, borderColor: LINE }}
+      className="mw-fade-up w-full max-w-lg rounded-2xl border p-6 sm:p-7"
+      style={{ background: "var(--panel)", borderColor: "var(--line)" }}
       onClick={(e) => e.stopPropagation()}
     >
       <div className="flex items-start justify-between">
         <div>
           <h3 className="text-xl font-bold">How to get your statement</h3>
-          <p className="mt-1 text-sm text-white/45">From the Google Pay app</p>
+          <p className="mt-1 text-sm" style={{ color: "var(--fg-3)" }}>
+            From the Google Pay app
+          </p>
         </div>
         <button
           onClick={onClose}
           aria-label="Close"
-          className="grid h-9 w-9 place-items-center rounded-lg border text-white/70 transition-colors hover:text-white"
-          style={{ borderColor: LINE }}
+          className="grid h-9 w-9 shrink-0 place-items-center rounded-lg border transition-opacity hover:opacity-70"
+          style={{ borderColor: "var(--line)", color: "var(--fg-2)" }}
         >
           <Cross1Icon />
         </button>
@@ -530,11 +827,16 @@ const HelpModal: React.FC<{ onClose: () => void }> = ({ onClose }) => (
           <li key={i} className="flex items-start gap-3.5">
             <span
               className="mt-0.5 grid h-7 w-7 shrink-0 place-items-center rounded-full text-xs font-bold"
-              style={{ background: AMBER, color: INK }}
+              style={{ background: "var(--accent)", color: "var(--accent-ink)" }}
             >
               {i + 1}
             </span>
-            <span className="text-[15px] leading-relaxed text-white/75">{s}</span>
+            <span
+              className="text-[15px] leading-relaxed"
+              style={{ color: "var(--fg-2)" }}
+            >
+              {s}
+            </span>
           </li>
         ))}
       </ol>
@@ -542,7 +844,7 @@ const HelpModal: React.FC<{ onClose: () => void }> = ({ onClose }) => (
       <button
         onClick={onClose}
         className="mt-7 w-full rounded-xl py-3 text-sm font-bold transition-opacity hover:opacity-90"
-        style={{ background: AMBER, color: INK }}
+        style={{ background: "var(--accent)", color: "var(--accent-ink)" }}
       >
         Got it
       </button>

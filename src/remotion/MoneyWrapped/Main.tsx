@@ -18,6 +18,7 @@ import { z } from "zod";
 import { CompositionProps } from "../../../types/constants";
 import { sans } from "./fonts";
 import {
+  SceneAccounts,
   SceneBiggestSplurge,
   SceneCircle,
   SceneIntro,
@@ -35,31 +36,58 @@ type Data = z.infer<typeof CompositionProps>;
 
 const TR = 12; // transition length (frames)
 
-// scene durations (frames). Sum = 1920; minus 10×12 transitions = 1800 = 60s.
-// Ordered as a short story: the scale → the rhythm → the people → the verdict.
-const SCENES: { dur: number; Comp: React.FC<{ data: Data }> }[] = [
+// scene durations (frames). Sum = 1932; minus 11×12 transitions = 1800 = 60s.
+// Ordered as a short story: the scale → where it came from → the rhythm →
+// the people → the verdict.
+const SCENES: {
+  dur: number;
+  label: string;
+  Comp: React.FC<{ data: Data }>;
+}[] = [
   // — the scale —
-  { dur: 150, Comp: SceneIntro },
-  { dur: 190, Comp: SceneTotalSpent },
-  { dur: 178, Comp: SceneTransactions },
+  { dur: 150, label: "Intro", Comp: SceneIntro },
+  { dur: 172, label: "Total spent", Comp: SceneTotalSpent },
+  { dur: 160, label: "Transactions", Comp: SceneTransactions },
+  // — where the money came from —
+  { dur: 150, label: "Accounts", Comp: SceneAccounts },
   // — the rhythm (when, across time) —
-  { dur: 178, Comp: ScenePowerHour },
-  { dur: 186, Comp: SceneMonthly },
+  { dur: 178, label: "Power hour", Comp: ScenePowerHour },
+  { dur: 168, label: "By month", Comp: SceneMonthly },
   // — the people (regulars → reach → the bill → the peak) —
-  { dur: 222, Comp: SceneLeaderboard },
-  { dur: 168, Comp: SceneCircle },
-  { dur: 210, Comp: SceneReceipt },
-  { dur: 182, Comp: SceneBiggestSplurge },
+  { dur: 196, label: "Top people", Comp: SceneLeaderboard },
+  { dur: 152, label: "Your circle", Comp: SceneCircle },
+  { dur: 186, label: "Receipt", Comp: SceneReceipt },
+  { dur: 164, label: "Biggest splurge", Comp: SceneBiggestSplurge },
   // — the verdict —
-  { dur: 172, Comp: ScenePersonality },
-  { dur: 84, Comp: SceneOutro },
+  { dur: 172, label: "Personality", Comp: ScenePersonality },
+  { dur: 84, label: "Outro", Comp: SceneOutro },
 ];
 
+// Total timeline length: every transition overlaps its neighbours by TR.
+const DURATION_FRAMES =
+  SCENES.reduce((s, x) => s + x.dur, 0) - (SCENES.length - 1) * TR;
+
+// Frame ranges of each scene on the *timeline* (transitions overlap by TR, so
+// sequence k starts at Σdur[<k] − k·TR). Exposed so the landing page can offer
+// per-section playback. end = next section's start (last = full duration).
+export type Section = { label: string; start: number; end: number };
+export const SECTIONS: Section[] = SCENES.map((s, k) => {
+  const start = SCENES.slice(0, k).reduce((a, x) => a + x.dur, 0) - k * TR;
+  return { label: s.label, start };
+}).map((seg, k, arr) => ({
+  ...seg,
+  end: k < arr.length - 1 ? arr[k + 1].start : DURATION_FRAMES,
+}));
+
 // Forward-moving slides carry the story along; fades mark the act breaks.
+// slide() and fade() yield differently-parameterised presentations, so the
+// array is intentionally heterogeneous.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 const transitions: TransitionPresentation<any>[] = [
   slide({ direction: "from-bottom" }), // intro → total spent
   slide({ direction: "from-right" }), // total spent → transactions
-  fade(), // transactions → power hour (the rhythm begins)
+  fade(), // transactions → accounts (where it came from)
+  slide({ direction: "from-right" }), // accounts → power hour
   slide({ direction: "from-right" }), // power hour → monthly
   fade(), // monthly → leaderboard (the people begin)
   slide({ direction: "from-right" }), // leaderboard → circle

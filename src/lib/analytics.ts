@@ -8,7 +8,8 @@ export type Txn = {
   name: string;
   dir: "paid" | "received";
   amount: number;
-  source: "credit" | "kotak" | "other";
+  source: "credit" | "other";
+  account: string; // funding instrument exactly as printed, e.g. "Kotak Mahindra Bank 5551"
 };
 
 export type WrappedData = {
@@ -37,6 +38,13 @@ export type WrappedData = {
   weekdaySpend: number;
   weekendSpend: number;
   uniquePayees: number;
+  accounts: {
+    key: string;
+    label: string;
+    total: number;
+    count: number;
+    pct: number;
+  }[];
   personality: { title: string; icon: string; blurb: string };
 };
 
@@ -195,6 +203,41 @@ export function analyze(txns: Txn[], handle: string): WrappedData {
 
   const uniquePayees = byPayee.size;
 
+  // spend split by funding account, using the names exactly as the statement
+  // prints them (e.g. "Kotak Mahindra Bank 5551", "SBM Bank India Ltd XX50 ·
+  // RuPay credit card") — we never assume which bank or card the user has.
+  const byAccount = new Map<string, { total: number; count: number }>();
+  for (const t of paid) {
+    const key = t.account || "Other account";
+    const e = byAccount.get(key) ?? { total: 0, count: 0 };
+    e.total += t.amount;
+    e.count += 1;
+    byAccount.set(key, e);
+  }
+  const toAccount = (label: string, total: number, count: number) => ({
+    key: label,
+    label,
+    total,
+    count,
+    pct: totalSent ? Math.round((total / totalSent) * 100) : 0,
+  });
+  let accounts = Array.from(byAccount.entries())
+    .map(([label, v]) => toAccount(label, v.total, v.count))
+    .sort((a, b) => b.total - a.total);
+  // keep the chart readable: top 4 accounts, rest merged into "Other accounts"
+  if (accounts.length > 5) {
+    const head = accounts.slice(0, 4);
+    const tail = accounts.slice(4);
+    head.push(
+      toAccount(
+        "Other accounts",
+        tail.reduce((s, a) => s + a.total, 0),
+        tail.reduce((s, a) => s + a.count, 0),
+      ),
+    );
+    accounts = head;
+  }
+
   const personality = derivePersonality({
     smallTxnPct,
     creditSharePct,
@@ -242,6 +285,7 @@ export function analyze(txns: Txn[], handle: string): WrappedData {
     weekdaySpend,
     weekendSpend,
     uniquePayees,
+    accounts,
     personality,
   };
 }

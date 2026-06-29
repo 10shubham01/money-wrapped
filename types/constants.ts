@@ -43,6 +43,15 @@ export const CompositionProps = z.object({
   weekdaySpend: z.number(),
   weekendSpend: z.number(),
   uniquePayees: z.number(),
+  accounts: z.array(
+    z.object({
+      key: z.string(),
+      label: z.string(),
+      total: z.number(),
+      count: z.number(),
+      pct: z.number(),
+    }),
+  ),
   personality: z.object({
     title: z.string(),
     icon: z.string(),
@@ -96,6 +105,22 @@ export const defaultMyCompProps: z.infer<typeof CompositionProps> = {
   weekdaySpend: 248000,
   weekendSpend: 116878,
   uniquePayees: 187,
+  accounts: [
+    {
+      key: "Kotak Mahindra Bank 5551",
+      label: "Kotak Mahindra Bank 5551",
+      total: 255415,
+      count: 849,
+      pct: 70,
+    },
+    {
+      key: "SBM Bank India Ltd XX50 · RuPay credit card",
+      label: "SBM Bank India Ltd XX50 · RuPay credit card",
+      total: 109463,
+      count: 250,
+      pct: 30,
+    },
+  ],
   personality: {
     title: "The Tap-Tap Champion",
     icon: "bolt",
