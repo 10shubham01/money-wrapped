@@ -60,3 +60,94 @@
     }
   }
 }
+
+/* ---- Money Wrapped landing-page motion ---- */
+@keyframes mw-fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+@keyframes mw-float {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-14px);
+  }
+}
+@keyframes mw-drift {
+  0% {
+    transform: translate(0, 0);
+  }
+  50% {
+    transform: translate(40px, -30px);
+  }
+  100% {
+    transform: translate(0, 0);
+  }
+}
+@keyframes mw-scan {
+  0% {
+    top: -20%;
+    opacity: 0;
+  }
+  20% {
+    opacity: 1;
+  }
+  80% {
+    opacity: 1;
+  }
+  100% {
+    top: 120%;
+    opacity: 0;
+  }
+}
+@keyframes mw-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+@keyframes mw-pulse {
+  0%,
+  100% {
+    opacity: 0.4;
+  }
+  50% {
+    opacity: 0.85;
+  }
+}
+
+.mw-fade-up {
+  animation: mw-fade-up 0.8s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+.mw-float {
+  animation: mw-float 6s ease-in-out infinite;
+}
+.mw-drift {
+  animation: mw-drift 18s ease-in-out infinite;
+}
+.mw-scan {
+  animation: mw-scan 5s ease-in-out infinite;
+}
+.mw-spin-slow {
+  animation: mw-spin 16s linear infinite;
+}
+.mw-pulse {
+  animation: mw-pulse 4s ease-in-out infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .mw-fade-up,
+  .mw-float,
+  .mw-drift,
+  .mw-scan,
+  .mw-spin-slow,
+  .mw-pulse {
+    animation: none;
+  }
+}

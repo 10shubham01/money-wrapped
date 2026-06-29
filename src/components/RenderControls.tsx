@@ -6,15 +6,12 @@ import { Button } from "./Button";
 import { InputContainer } from "./Container";
 import { DownloadButton } from "./DownloadButton";
 import { ErrorComp } from "./Error";
-import { Input } from "./Input";
 import { ProgressBar } from "./ProgressBar";
 import { Spacing } from "./Spacing";
 
 export const RenderControls: React.FC<{
-  text: string;
-  setText: React.Dispatch<React.SetStateAction<string>>;
   inputProps: z.infer<typeof CompositionProps>;
-}> = ({ text, setText, inputProps }) => {
+}> = ({ inputProps }) => {
   const { renderMedia, state, undo } = useRendering(COMP_NAME, inputProps);
 
   return (
@@ -23,11 +20,10 @@ export const RenderControls: React.FC<{
       state.status === "invoking" ||
       state.status === "error" ? (
         <>
-          <Input
-            disabled={state.status === "invoking"}
-            setText={setText}
-            text={text}
-          ></Input>
+          <div className="text-sm text-gray-600">
+            Render a shareable MP4 in the cloud (requires Remotion Lambda — see
+            README). Preview above works without any setup.
+          </div>
           <Spacing></Spacing>
           <AlignEnd>
             <Button
@@ -35,7 +31,7 @@ export const RenderControls: React.FC<{
               loading={state.status === "invoking"}
               onClick={renderMedia}
             >
-              Render video
+              🎬 Render MP4
             </Button>
           </AlignEnd>
           {state.status === "error" ? (

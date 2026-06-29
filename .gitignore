@@ -37,3 +37,6 @@ next-env.d.ts
 out/
 .env
 build
+
+# personal bank/payment statements — never commit
+*.pdf

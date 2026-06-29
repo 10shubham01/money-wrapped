@@ -2,8 +2,9 @@ import { Metadata, Viewport } from "next";
 import "../../styles/global.css";
 
 export const metadata: Metadata = {
-  title: "Remotion and Next.js",
-  description: "Remotion and Next.js",
+  title: "Money Wrapped — your payments, wrapped",
+  description:
+    "Turn your payment-app statement into a fun, shareable 45-second recap video. Runs entirely in your browser.",
 };
 
 export const viewport: Viewport = {
@@ -19,7 +20,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      <body className="bg-background">{children}</body>
+      <body style={{ background: "#0A0B0D" }}>{children}</body>
     </html>
   );
 }
