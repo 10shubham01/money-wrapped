@@ -4,9 +4,9 @@ import { PageHeader, Section, Updated } from "../../components/prose";
 import { CONTACT_EMAIL } from "../../lib/site-config";
 
 export const metadata: Metadata = {
-  title: "Privacy — Money Wrapped",
+  title: "Privacy — MoneyUnwrapped",
   description:
-    "Money Wrapped runs entirely in your browser. Your statement is never uploaded, stored, or tracked.",
+    "MoneyUnwrapped runs entirely in your browser. Your statement is never uploaded, stored, or tracked.",
 };
 
 export default function PrivacyPage() {
@@ -15,7 +15,7 @@ export default function PrivacyPage() {
       <PageHeader
         eyebrow="Privacy"
         title="Your data never leaves your device."
-        lead="Money Wrapped is built privacy-first. There is no server that sees your statement — everything happens locally, in the browser tab in front of you."
+        lead="MoneyUnwrapped is built privacy-first. There is no server that sees your statement — everything happens locally, in the browser tab in front of you."
       />
 
       <Section title="No upload, ever">
@@ -55,7 +55,7 @@ export default function PrivacyPage() {
 
       <Section title="Questions">
         <p>
-          Money Wrapped is open and built in the open. If something here
+          MoneyUnwrapped is open and built in the open. If something here
           isn&apos;t clear, reach out at{" "}
           <a
             href={`mailto:${CONTACT_EMAIL}`}

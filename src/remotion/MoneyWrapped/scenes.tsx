@@ -105,8 +105,8 @@ export const SceneIntro: React.FC<{ data: Data }> = ({ data }) => {
           </div>
         </RevealUp>
         <RevealUp delay={22}>
-          <div style={{ fontFamily: display, fontSize: 184, lineHeight: 0.9, letterSpacing: -3, color: C.yellow }}>
-            WRAPPED
+          <div style={{ fontFamily: display, fontSize: 150, lineHeight: 0.9, letterSpacing: -3, color: C.yellow }}>
+            UNWRAPPED
           </div>
         </RevealUp>
         <div style={{ height: 12, width: lineW, background: C.coral, borderRadius: 99, marginTop: 28 }} />
@@ -279,7 +279,7 @@ export const SceneReceipt: React.FC<{ data: Data }> = ({ data }) => {
             <TornEdge color={C.paper} />
             <div style={{ background: C.paper, padding: "20px 56px 30px" }}>
               <div style={{ textAlign: "center", fontFamily: display, fontSize: 54, color: C.ink, letterSpacing: 1 }}>
-                MONEY WRAPPED
+                MONEY UNWRAPPED
               </div>
               <div style={{ textAlign: "center", fontFamily: sans, fontSize: 26, fontWeight: 700, color: C.ink, opacity: 0.5, letterSpacing: 6, marginTop: 2 }}>
                 — RECEIPT —

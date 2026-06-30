@@ -167,7 +167,7 @@ const Hud: React.FC<{ data: Data }> = ({ data }) => {
           })}
         </div>
         <div style={{ display: "flex", justifyContent: "space-between", marginTop: 18, color: "#fff", fontFamily: sans, fontWeight: 700, fontSize: 30, letterSpacing: 1 }}>
-          <span>MONEY WRAPPED</span>
+          <span>MONEY UNWRAPPED</span>
           <span style={{ opacity: 0.85 }}>@{data.handle}</span>
         </div>
       </div>

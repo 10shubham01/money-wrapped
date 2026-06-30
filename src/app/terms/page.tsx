@@ -7,9 +7,9 @@ import {
 } from "../../lib/site-config";
 
 export const metadata: Metadata = {
-  title: "Terms — Money Wrapped",
+  title: "Terms — MoneyUnwrapped",
   description:
-    "Terms of use for Money Wrapped — a free, personal, client-side tool. Provided as-is, not affiliated with Google.",
+    "Terms of use for MoneyUnwrapped — a free, personal, client-side tool. Provided as-is, not affiliated with Google.",
 };
 
 export default function TermsPage() {
@@ -18,12 +18,12 @@ export default function TermsPage() {
       <PageHeader
         eyebrow="Terms"
         title="The short version."
-        lead="Money Wrapped is a free, personal project. By using it you agree to the simple terms below."
+        lead="MoneyUnwrapped is a free, personal project. By using it you agree to the simple terms below."
       />
 
       <Section title="Personal use">
         <p>
-          Money Wrapped is provided for personal, non-commercial use — to turn
+          MoneyUnwrapped is provided for personal, non-commercial use — to turn
           your own payment statement into a fun recap. Please don&apos;t use it
           to process other people&apos;s financial data without their consent.
         </p>
@@ -40,7 +40,7 @@ export default function TermsPage() {
 
       <Section title="Not affiliated with Google">
         <p>
-          Money Wrapped is an independent project. &ldquo;Google Pay&rdquo; and
+          MoneyUnwrapped is an independent project. &ldquo;Google Pay&rdquo; and
           the Google Pay logo are trademarks of Google LLC. This project is not
           created, endorsed, sponsored by, or affiliated with Google.
         </p>

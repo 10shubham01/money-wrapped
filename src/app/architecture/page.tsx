@@ -3,9 +3,9 @@ import { PageShell } from "../../components/site";
 import { PageHeader, Section, Updated } from "../../components/prose";
 
 export const metadata: Metadata = {
-  title: "How it works — Money Wrapped",
+  title: "How it works — MoneyUnwrapped",
   description:
-    "The architecture behind Money Wrapped: a 100% client-side pipeline from PDF to a rendered recap video, with no server involved.",
+    "The architecture behind MoneyUnwrapped: a 100% client-side pipeline from PDF to a rendered recap video, with no server involved.",
 };
 
 const STEPS = [
@@ -86,7 +86,7 @@ export default function ArchitecturePage() {
       <PageHeader
         eyebrow="How it works"
         title="A recap video, built entirely in your browser."
-        lead="Money Wrapped has no backend. From the moment you pick a PDF to the final rendered reel, every step runs locally on your device."
+        lead="MoneyUnwrapped has no backend. From the moment you pick a PDF to the final rendered reel, every step runs locally on your device."
       />
 
       <Section title="The pipeline">

@@ -10,9 +10,9 @@ import {
   PauseIcon,
   PlayIcon,
   QuestionMarkCircledIcon,
-  ReloadIcon,
   SpeakerLoudIcon,
   SpeakerOffIcon,
+  UploadIcon,
 } from "@radix-ui/react-icons";
 import { Player, type PlayerRef } from "@remotion/player";
 import type { NextPage } from "next";
@@ -130,7 +130,7 @@ const Landing: React.FC<{
         style={{ color: "var(--fg-3)", animationDelay: "40ms" }}
       >
         <span className="h-px w-6 sm:w-8" style={{ background: "var(--accent)" }} />
-        Money Wrapped · 2026 Edition
+        MoneyUnwrapped · 2026 Edition
         <span className="h-px w-6 sm:w-8" style={{ background: "var(--accent)" }} />
       </div>
 
@@ -150,7 +150,7 @@ const Landing: React.FC<{
         >
           money
         </span>
-        , wrapped.
+        , unwrapped.
       </h1>
 
       <p
@@ -312,13 +312,27 @@ const Dot: React.FC = () => (
   <span className="h-1 w-1 rounded-full" style={{ background: "var(--fg-4)" }} />
 );
 
+// frames → m:ss, for the timeline counter
+const fmtTime = (frames: number) => {
+  const total = Math.round(frames / VIDEO_FPS);
+  const m = Math.floor(total / 60);
+  const s = total % 60;
+  return `${m}:${String(s).padStart(2, "0")}`;
+};
+
 // ===========================================================================
 // VIDEO PLAYER — audio on by default, per-section playback, no looping
 // ===========================================================================
 const VideoPlayer: React.FC<{ data: WrappedData }> = ({ data }) => {
   const ref = useRef<PlayerRef>(null);
   const boxRef = useRef<HTMLDivElement>(null);
+  const trackRef = useRef<HTMLDivElement>(null);
+  const scrubbingRef = useRef(false);
+  const movedRef = useRef(false);
+  const downXRef = useRef(0);
   const [playing, setPlaying] = useState(false);
+  // current playhead position, in frames — drives the timeline fill
+  const [frame, setFrame] = useState(0);
   // CSS pseudo-fullscreen fallback for browsers without the Fullscreen API
   // (notably iOS Safari, which only supports it on native <video> elements)
   const [cssFullscreen, setCssFullscreen] = useState(false);
@@ -339,6 +353,7 @@ const VideoPlayer: React.FC<{ data: WrappedData }> = ({ data }) => {
         stopAtRef.current = null;
         p.pause();
       }
+      setFrame(f);
       const idx = SECTIONS.findIndex((s) => f >= s.start && f < s.end);
       setActiveIdx(idx === -1 ? null : idx);
     };
@@ -382,15 +397,61 @@ const VideoPlayer: React.FC<{ data: WrappedData }> = ({ data }) => {
     [unmuteOnce],
   );
 
-  // combined CTA: play the whole thing from the top
-  const playFull = useCallback(() => {
+  // map a pointer x-position on the timeline track to a frame
+  const frameFromClientX = useCallback((clientX: number) => {
+    const el = trackRef.current;
+    if (!el) return 0;
+    const r = el.getBoundingClientRect();
+    const pct = Math.min(1, Math.max(0, (clientX - r.left) / r.width));
+    return Math.round(pct * (DURATION_IN_FRAMES - 1));
+  }, []);
+
+  const seekToFrame = useCallback((f: number) => {
     const p = ref.current;
     if (!p) return;
-    unmuteOnce(p);
     stopAtRef.current = null;
-    p.seekTo(0);
-    p.play();
-  }, [unmuteOnce]);
+    p.seekTo(f);
+    setFrame(f);
+  }, []);
+
+  // drag anywhere on the track to scrub frame-accurately
+  const onTrackPointerDown = useCallback(
+    (e: React.PointerEvent) => {
+      const p = ref.current;
+      if (!p) return;
+      scrubbingRef.current = true;
+      movedRef.current = false;
+      downXRef.current = e.clientX;
+      e.currentTarget.setPointerCapture(e.pointerId);
+      p.pause();
+      seekToFrame(frameFromClientX(e.clientX));
+    },
+    [frameFromClientX, seekToFrame],
+  );
+
+  const onTrackPointerMove = useCallback(
+    (e: React.PointerEvent) => {
+      if (!scrubbingRef.current) return;
+      if (Math.abs(e.clientX - downXRef.current) > 5) movedRef.current = true;
+      seekToFrame(frameFromClientX(e.clientX));
+    },
+    [frameFromClientX, seekToFrame],
+  );
+
+  const onTrackPointerUp = useCallback(
+    (e: React.PointerEvent) => {
+      if (!scrubbingRef.current) return;
+      scrubbingRef.current = false;
+      e.currentTarget.releasePointerCapture(e.pointerId);
+      // a tap (no real drag) jumps to — and plays — the scene under the cursor
+      if (!movedRef.current) {
+        const f = frameFromClientX(e.clientX);
+        const idx = SECTIONS.findIndex((s) => f >= s.start && f < s.end);
+        if (idx !== -1) playSection(idx);
+      }
+    },
+    [frameFromClientX, playSection],
+  );
 
   const toggleMute = useCallback((e: React.MouseEvent) => {
     e.stopPropagation();
@@ -450,7 +511,7 @@ const VideoPlayer: React.FC<{ data: WrappedData }> = ({ data }) => {
         className={
           cssFullscreen
             ? "fixed inset-0 z-[60] grid place-items-center"
-            : "relative overflow-hidden rounded-2xl border"
+            : "relative overflow-hidden border"
         }
         style={{
           borderColor: cssFullscreen ? undefined : "var(--line)",
@@ -524,51 +585,58 @@ const VideoPlayer: React.FC<{ data: WrappedData }> = ({ data }) => {
         </button>
       </div>
 
-      {/* chapter grid — GitHub-style squares; number only, label on hover */}
-      <div
-        className="mt-4 grid gap-1.5"
-        style={{ gridTemplateColumns: "repeat(6, minmax(0, 1fr))" }}
-      >
-        {SECTIONS.map((s, i) => {
-          const active = i === activeIdx;
-          return (
-            <button
-              key={s.label}
-              onClick={() => playSection(i)}
-              aria-label={`Play ${s.label}`}
-              className="group relative grid place-items-center rounded-[5px] border text-xs font-bold tabular-nums transition-colors"
-              style={{
-                aspectRatio: "1 / 1",
-                borderColor: active ? "var(--accent)" : "var(--line)",
-                background: active ? "var(--accent)" : "var(--panel)",
-                color: active ? "var(--accent-ink)" : "var(--fg-2)",
-              }}
-            >
-              {i + 1}
-              {/* hover label (desktop only — needs a pointer) */}
-              <span
-                className="pointer-events-none absolute bottom-full left-1/2 z-10 mb-1.5 hidden -translate-x-1/2 whitespace-nowrap rounded-md border px-2 py-1 text-[10px] font-semibold opacity-0 transition-opacity group-hover:opacity-100 sm:block"
+      {/* seekable timeline — every scene is a segment; drag to scrub, tap a
+          segment to jump to that scene. Cuts are the gaps between segments. */}
+      <div className="mt-4 select-none">
+        <div className="mb-2 flex items-center justify-between gap-3 text-[11px] font-semibold">
+          <span className="min-w-0 truncate" style={{ color: "var(--fg-2)" }}>
+            {activeIdx !== null
+              ? `${activeIdx + 1}. ${SECTIONS[activeIdx].label}`
+              : "Drag to seek · tap a scene"}
+          </span>
+          <span className="shrink-0 tabular-nums" style={{ color: "var(--fg-3)" }}>
+            {fmtTime(frame)} / {fmtTime(DURATION_IN_FRAMES)}
+          </span>
+        </div>
+
+        <div
+          ref={trackRef}
+          onPointerDown={onTrackPointerDown}
+          onPointerMove={onTrackPointerMove}
+          onPointerUp={onTrackPointerUp}
+          role="slider"
+          aria-label="Seek video"
+          aria-valuemin={0}
+          aria-valuemax={DURATION_IN_FRAMES}
+          aria-valuenow={frame}
+          className="flex h-7 w-full cursor-pointer items-center gap-[3px]"
+          style={{ touchAction: "none" }}
+        >
+          {SECTIONS.map((s, i) => {
+            const span = s.end - s.start;
+            const fill = Math.min(1, Math.max(0, (frame - s.start) / span));
+            const active = i === activeIdx;
+            return (
+              <div
+                key={s.label}
+                title={`${i + 1}. ${s.label}`}
+                className="relative overflow-hidden rounded-full transition-all duration-150"
                 style={{
-                  background: "var(--panel-2)",
-                  borderColor: "var(--line)",
-                  color: "var(--fg)",
+                  flexGrow: span,
+                  flexBasis: 0,
+                  height: active ? 10 : 6,
+                  background: active ? "var(--accent)" : "var(--panel-2)",
                 }}
               >
-                {s.label}
-              </span>
-            </button>
-          );
-        })}
+                <div
+                  className="absolute inset-y-0 left-0 rounded-full"
+                  style={{ width: `${fill * 100}%`, background: "var(--accent)" }}
+                />
+              </div>
+            );
+          })}
+        </div>
       </div>
-
-      {/* full-video bar — the combined CTA */}
-      <button
-        onClick={playFull}
-        className="mt-3 flex h-9 w-full items-center justify-center gap-2 rounded-[5px] text-xs font-bold uppercase tracking-[0.14em] transition-opacity hover:opacity-90"
-        style={{ background: "var(--accent)", color: "var(--accent-ink)" }}
-      >
-        <PlayIcon className="h-3.5 w-3.5" /> Full recap
-      </button>
     </div>
   );
 };
@@ -596,7 +664,7 @@ const Result: React.FC<{ data: WrappedData; onReset: () => void }> = ({
             color: "var(--fg-2)",
           }}
         >
-          <ReloadIcon /> Make another
+          <UploadIcon /> Wrap another statement
         </button>
       </div>
 
@@ -610,7 +678,7 @@ const Result: React.FC<{ data: WrappedData; onReset: () => void }> = ({
         </div>
 
         <h1 className="mt-4 text-3xl font-extrabold leading-[1.04] tracking-tight sm:text-4xl">
-          @{data.handle}&apos;s Money Wrapped
+          @{data.handle}&apos;s MoneyUnwrapped
         </h1>
         <p className="mt-2 text-sm" style={{ color: "var(--fg-3)" }}>
           {data.periodLabel}
@@ -805,7 +873,7 @@ const Cover: React.FC<{ busy: boolean }> = ({ busy }) => (
     style={{ background: "linear-gradient(160deg,#16131F 0%,#0B0C12 60%)" }}
   >
     <div className="flex items-center justify-between text-[10px] font-bold uppercase tracking-[0.18em] text-white/55">
-      <span>Money Wrapped</span>
+      <span>MoneyUnwrapped</span>
       <span>20:26</span>
     </div>
 
@@ -823,7 +891,7 @@ const Cover: React.FC<{ busy: boolean }> = ({ busy }) => (
         className="font-extrabold leading-[0.92] tracking-tight"
         style={{ fontSize: "clamp(24px,4.6vh,32px)", color: "#FFC93C" }}
       >
-        WRAPPED
+        UNWRAPPED
       </span>
       <span className="mt-3 h-px w-[18%]" style={{ background: "#FF5C46" }} />
     </div>
@@ -847,6 +915,7 @@ const STEPS = [
   "In the top-right corner (near the search bar), tap More, then select Get statement.",
   "Choose the statement period you need — anywhere from 1 to 6 months.",
   "Tap Continue to load the statement.",
+  "Once it loads, tap Share and select Save to device to download the PDF.",
 ];
 
 const HelpModal: React.FC<{ onClose: () => void }> = ({ onClose }) => (

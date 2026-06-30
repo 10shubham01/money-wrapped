@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Synthesize a catchy, upbeat, anthemic background track for the GPay Money Wrapped video.
+"""Synthesize a catchy, upbeat, anthemic background track for the GPay MoneyUnwrapped video.
 
 Pure-Python (no numpy/ffmpeg). Writes a 16-bit stereo WAV to public/audio/wrapped-theme.wav.
 Style: festival EDM-pop in A-minor (vi-IV-I-V). Through-composed so it never feels like a

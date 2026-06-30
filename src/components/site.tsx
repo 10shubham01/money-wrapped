@@ -26,7 +26,7 @@ const BrandMark: React.FC = () => (
     </span>
     <span className="flex flex-col leading-none">
       <span className="text-[15px] font-extrabold tracking-tight">
-        Money Wrapped
+        MoneyUnwrapped
       </span>
       <span
         className="mt-1 hidden text-[10px] font-medium uppercase tracking-[0.22em] sm:block"

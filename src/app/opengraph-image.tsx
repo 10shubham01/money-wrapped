@@ -1,6 +1,6 @@
 import { ImageResponse } from "next/og";
 
-export const alt = "Money Wrapped — your payments, wrapped";
+export const alt = "MoneyUnwrapped — your payments, unwrapped";
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
 
@@ -73,7 +73,7 @@ export default function OpengraphImage() {
             letterSpacing: -2,
           }}
         >
-          wrapped.
+          unwrapped.
         </div>
 
         <div style={{ display: "flex", width: 110, height: 8, marginTop: 28, background: "#FF5C46" }} />
