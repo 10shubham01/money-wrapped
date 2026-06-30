@@ -37,11 +37,27 @@ const Home: NextPage = () => {
   const [status, setStatus] = useState<Status>({ kind: "idle" });
   const [dragging, setDragging] = useState(false);
   const [help, setHelp] = useState(false);
+  // global count of recaps unwrapped (from the JSON-db API)
+  const [views, setViews] = useState<number | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
   const ready = status.kind === "ready";
   const reset = useCallback(() => setStatus({ kind: "idle" }), []);
   const openPicker = useCallback(() => inputRef.current?.click(), []);
+
+  // fetch the current count on load
+  useEffect(() => {
+    let cancelled = false;
+    fetch("/api/views")
+      .then((r) => r.json())
+      .then((d) => {
+        if (!cancelled && typeof d?.count === "number") setViews(d.count);
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const handleFile = useCallback(async (file: File) => {
     if (!file.name.toLowerCase().endsWith(".pdf")) {
@@ -53,6 +69,13 @@ const Home: NextPage = () => {
       const { parseStatement } = await import("../lib/parse-statement");
       const data = await parseStatement(file);
       setStatus({ kind: "ready", data });
+      // a recap was just unwrapped — bump the global counter
+      fetch("/api/views", { method: "POST" })
+        .then((r) => r.json())
+        .then((d) => {
+          if (typeof d?.count === "number") setViews(d.count);
+        })
+        .catch(() => {});
     } catch (e) {
       setStatus({
         kind: "error",
@@ -98,6 +121,7 @@ const Home: NextPage = () => {
               openPicker={openPicker}
               onDrop={onDrop}
               onHelp={() => setHelp(true)}
+              views={views}
             />
           )}
         </main>
@@ -120,7 +144,8 @@ const Landing: React.FC<{
   openPicker: () => void;
   onDrop: (e: React.DragEvent) => void;
   onHelp: () => void;
-}> = ({ status, dragging, setDragging, openPicker, onDrop, onHelp }) => {
+  views: number | null;
+}> = ({ status, dragging, setDragging, openPicker, onDrop, onHelp, views }) => {
   const parsing = status.kind === "parsing";
 
   return (
@@ -177,6 +202,19 @@ const Landing: React.FC<{
         >
           <PlayIcon className="h-3 w-3" /> 60-second recap
         </span>
+
+        {views !== null && views > 0 && (
+          <span
+            className="mt-2.5 inline-flex items-center gap-2 text-[11px] font-semibold tabular-nums"
+            style={{ color: "var(--fg-3)" }}
+          >
+            <span
+              className="h-1.5 w-1.5 rounded-full"
+              style={{ background: "#34d98a" }}
+            />
+            {views.toLocaleString("en-IN")} recaps unwrapped so far
+          </span>
+        )}
       </div>
 
       {/* ticket-stub upload */}

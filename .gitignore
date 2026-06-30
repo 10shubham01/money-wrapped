@@ -43,3 +43,5 @@ build
 
 # local agent/story logs
 asterix_story_log.json
+# local JSON view counter (mutable)
+data/views.json
