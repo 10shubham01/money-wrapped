@@ -25,6 +25,7 @@ import {
 } from "../../types/constants";
 import { GPayLogo, SiteFooter, SiteHeader } from "../components/site";
 import { formatCompactINR, type WrappedData } from "../lib/analytics";
+import { DEMO_WRAPPED } from "../lib/demo-data";
 import { Main, SECTIONS } from "../remotion/MoneyWrapped/Main";
 
 type Status =
@@ -190,17 +191,12 @@ const Landing: React.FC<{
         className="mw-fade-up mt-7 flex flex-col items-center sm:mt-8"
         style={{ animationDelay: "220ms" }}
       >
-        <div
-          className="w-[clamp(188px,26vh,248px)] overflow-hidden rounded-2xl border"
-          style={{ borderColor: "var(--line)", background: "#000" }}
-        >
-          <Cover busy={parsing} />
-        </div>
+        <PreviewPlayer busy={parsing} />
         <span
           className="mt-3 inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-[11px] font-semibold"
           style={{ borderColor: "var(--line)", color: "var(--fg-3)" }}
         >
-          <PlayIcon className="h-3 w-3" /> 60-second recap
+          <PlayIcon className="h-3 w-3" /> Demo recap · 60 seconds
         </span>
 
         {views !== null && views > 0 && (
@@ -903,47 +899,127 @@ const PersonRow: React.FC<{
 );
 
 // ===========================================================================
-// REEL COVER — color-blocked title card (kept dark; it previews the video)
+// PREVIEW PLAYER — a playable, 100% fictional demo recap shown on the hero
+// so visitors can watch a full preview before uploading their own statement.
 // ===========================================================================
-const Cover: React.FC<{ busy: boolean }> = ({ busy }) => (
-  <div
-    className="relative flex aspect-[9/16] w-full flex-col justify-between overflow-hidden p-4"
-    style={{ background: "linear-gradient(160deg,#16131F 0%,#0B0C12 60%)" }}
-  >
-    <div className="flex items-center justify-between text-[10px] font-bold uppercase tracking-[0.18em] text-white/55">
-      <span>MoneyUnwrapped</span>
-      <span>20:26</span>
-    </div>
+const PreviewPlayer: React.FC<{ busy: boolean }> = ({ busy }) => {
+  const ref = useRef<PlayerRef>(null);
+  const [playing, setPlaying] = useState(false);
+  const [started, setStarted] = useState(false);
+  const [muted, setMuted] = useState(true);
 
-    <div className="flex flex-col">
-      <span
-        className="font-extrabold leading-[0.92] tracking-tight text-transparent"
-        style={{
-          fontSize: "clamp(24px,4.6vh,32px)",
-          WebkitTextStroke: "1.4px #FFFDF5",
-        }}
-      >
-        MONEY
-      </span>
-      <span
-        className="font-extrabold leading-[0.92] tracking-tight"
-        style={{ fontSize: "clamp(24px,4.6vh,32px)", color: "#FFC93C" }}
-      >
-        UNWRAPPED
-      </span>
-      <span className="mt-3 h-px w-[18%]" style={{ background: "#FF5C46" }} />
-    </div>
+  useEffect(() => {
+    const p = ref.current;
+    if (!p) return;
+    const onPlay = () => setPlaying(true);
+    const onPause = () => setPlaying(false);
+    // loop the demo so the hero is never left on a frozen end frame
+    const onEnded = () => {
+      p.seekTo(0);
+      p.play();
+    };
+    p.addEventListener("play", onPlay);
+    p.addEventListener("pause", onPause);
+    p.addEventListener("ended", onEnded);
+    return () => {
+      p.removeEventListener("play", onPlay);
+      p.removeEventListener("pause", onPause);
+      p.removeEventListener("ended", onEnded);
+    };
+  }, []);
 
-    <div className="flex items-center justify-between text-[10px] font-semibold uppercase tracking-[0.16em] text-white/40">
-      <span>Your year</span>
-      {busy ? (
-        <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-white/30 border-t-white" />
-      ) : (
-        <span style={{ color: "#FFC93C" }}>60s recap</span>
+  const toggle = useCallback(() => {
+    const p = ref.current;
+    if (!p) return;
+    // first interaction unmutes — browsers allow audio after a user gesture
+    if (!started) {
+      p.unmute();
+      setMuted(false);
+      setStarted(true);
+      // internal metric: count this as one demo play (fire-and-forget, never
+      // surfaced on the page). One bump per session, on first play.
+      fetch("/api/demo-plays", { method: "POST" }).catch(() => {});
+    }
+    p.toggle();
+  }, [started]);
+
+  const toggleMute = useCallback((e: React.MouseEvent) => {
+    e.stopPropagation();
+    const p = ref.current;
+    if (!p) return;
+    if (p.isMuted()) {
+      p.unmute();
+      setMuted(false);
+    } else {
+      p.mute();
+      setMuted(true);
+    }
+  }, []);
+
+  return (
+    <div
+      className="relative w-[clamp(188px,26vh,248px)] overflow-hidden rounded-2xl border"
+      style={{ borderColor: "var(--line)", background: "#000" }}
+    >
+      <Player
+        ref={ref}
+        component={Main}
+        inputProps={DEMO_WRAPPED}
+        durationInFrames={DURATION_IN_FRAMES}
+        fps={VIDEO_FPS}
+        compositionHeight={VIDEO_HEIGHT}
+        compositionWidth={VIDEO_WIDTH}
+        style={{ width: "100%", display: "block" }}
+        clickToPlay={false}
+        controls={false}
+        initiallyMuted
+        numberOfSharedAudioTags={0}
+      />
+
+      {/* tap layer + centered play/pause */}
+      <button
+        onClick={toggle}
+        aria-label={playing ? "Pause demo" : "Play demo"}
+        className="group absolute inset-0 grid place-items-center"
+      >
+        {busy ? (
+          <span className="h-9 w-9 animate-spin rounded-full border-2 border-white/30 border-t-white" />
+        ) : (
+          <span
+            className={`grid place-items-center rounded-full shadow-lg transition-all duration-200 ${
+              playing
+                ? "h-12 w-12 opacity-0 group-hover:opacity-100 group-active:opacity-100"
+                : "h-[56px] w-[56px] opacity-100"
+            }`}
+            style={{ background: "var(--accent)", color: "var(--accent-ink)" }}
+          >
+            {playing ? (
+              <PauseIcon className="h-6 w-6" />
+            ) : (
+              <PlayIcon className="h-7 w-7 translate-x-[2px]" />
+            )}
+          </span>
+        )}
+      </button>
+
+      {/* mute toggle */}
+      {started && (
+        <button
+          onClick={toggleMute}
+          aria-label={muted ? "Unmute" : "Mute"}
+          className="absolute bottom-2.5 right-2.5 grid h-8 w-8 place-items-center rounded-full text-white"
+          style={{ background: "rgba(0,0,0,0.55)" }}
+        >
+          {muted ? (
+            <SpeakerOffIcon className="h-4 w-4" />
+          ) : (
+            <SpeakerLoudIcon className="h-4 w-4" />
+          )}
+        </button>
       )}
     </div>
-  </div>
-);
+  );
+};
 
 // ===========================================================================
 // HELP MODAL — how to get your statement

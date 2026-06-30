@@ -45,3 +45,5 @@ build
 asterix_story_log.json
 # local JSON view counter (mutable)
 data/views.json
+# local JSON demo-play counter (mutable)
+data/demo-plays.json
